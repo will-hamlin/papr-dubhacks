@@ -1,0 +1,11 @@
+{
+  "employeeId": "EMP-1088",
+  "companyId": "CO-001",
+  "name": "Jamie Chen",
+  "email": "jamie.chen@northstar.example",
+  "department": "Operations",
+  "role": "Intern",
+  "costCenter": "OPS-100",
+  "approvalLimit": 0,
+  "currency": "USD"
+}

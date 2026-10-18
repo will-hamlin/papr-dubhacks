@@ -1,3 +1,12 @@
+# Generic enterprise demos
+
+- **Employee purchasing dashboard:** see [DASHBOARD.md](DASHBOARD.md); run `npm start` in this folder and open http://127.0.0.1:3000.
+- **Purchasing authorization proxy:** setup and API documentation follow below.
+
+The dashboard currently sends its own request/configuration envelope to an editable service URL. It is not yet wired to the proxy's signed-auth `/orders` contract.
+
+---
+
 # Acme Corp Purchasing proxy (DEMO COMPANY)
 
 A standalone service between the caller (demo website / agent) and the pbapo engine.

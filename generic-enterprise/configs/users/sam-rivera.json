@@ -1,0 +1,11 @@
+{
+  "employeeId": "EMP-1126",
+  "companyId": "CO-003",
+  "name": "Sam Rivera",
+  "email": "sam.rivera@meridian.example",
+  "department": "Research",
+  "role": "Researcher",
+  "costCenter": "RND-200",
+  "approvalLimit": 2500,
+  "currency": "USD"
+}
