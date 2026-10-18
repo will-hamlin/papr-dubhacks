@@ -14,7 +14,7 @@ from proxy.engine import HttpEngine
 from proxy.models import Constraint, SpecProposal, Weight
 from proxy.signing import make_auth, sign, sign_payload, verify_payload
 from proxy.spec import ClaudeSpecParser, FallbackSpecParser, ParseError, RuleSpecParser, money_to_cents
-from tests.conftest import SECRET
+from tests.conftest import ALEX, JAMIE, NORTHSTAR, SECRET
 
 CHARGER = "65W USB-C charger for my XPS 13"
 
@@ -440,3 +440,106 @@ def test_purchase_idempotent_per_order_including_after_restart(env):
                                                          SECRET)).json()
     assert again["decision"] == "duplicate"
     assert restarted.state.proxy.policy.spend("J-1042") == (51000, 94000)
+
+
+# ---------------------------------------------------------------- employee dashboard envelope
+
+MERIDIAN = {**NORTHSTAR, "companyId": "CO-003", "name": "Meridian Labs",
+            "purchasePolicy": {"approvalRequiredAbove": 10000, "preferredVendors": ["Fisher Scientific", "Dell"]}}
+SAM_RIVERA = {**ALEX, "employeeId": "EMP-1126", "companyId": "CO-003", "name": "Sam Rivera", "approvalLimit": 2500}
+
+
+def test_dashboard_order_uses_dashboard_limits_and_company(env):
+    status, body = env.dashboard(CHARGER, request_id="req-1")
+    assert (status, body["decision"], body["request_id"]) == (200, "accepted", "req-1")
+    # min(Alex's approvalLimit $50,000, Northstar approvalRequiredAbove $5,000); Acme's $1,290 daily headroom ignored
+    assert body["limits"]["max_total_cents"] == 500000
+    assert body["limits"]["preferred_vendors"] == ["Staples", "Dell", "Grainger"]
+    sent = env.engine.received[0]
+    assert verify_payload(sent, SECRET)
+    assert sent["company"] == {"id": "CO-001", "name": "Northstar Industries"}
+    assert sent["requester"]["user_id"] == "EMP-1042" and sent["requester"]["cost_code"] == "EXEC-100"
+    assert sent["requester"]["ship_to"] == NORTHSTAR["billingAddress"]
+
+    _, body = env.dashboard(CHARGER, user=SAM_RIVERA, company=MERIDIAN)
+    assert body["limits"]["max_total_cents"] == 250000  # Sam's own $2,500 is below Meridian's $10,000
+
+
+def test_dashboard_zero_limit_and_blocked_items_refused(env):
+    status, body = env.dashboard(CHARGER, user=JAMIE)
+    assert (status, body["decision"]) == (403, "not_authorized") and "$0.00" in body["reason"]
+    status, body = env.dashboard("buy a $50 gift card for the team")
+    assert (status, body["decision"]) == (403, "violates_company_policy")
+    assert env.engine.received == []
+
+
+def test_dashboard_needs_bearer_token(env, make_env):
+    for token in (None, "wrong"):
+        status, body = env.dashboard(CHARGER, token=token)
+        assert (status, body["decision"]) == (401, "not_authorized")
+    env2 = make_env()
+    env2.proxy.settings.api_token = ""
+    assert env2.dashboard(CHARGER)[0] == 401
+    assert env.engine.received == []
+
+
+@pytest.mark.parametrize("user,company", [
+    ({**ALEX, "companyId": "CO-999"}, NORTHSTAR),
+    ({**ALEX, "currency": "EUR"}, NORTHSTAR),
+    ({**ALEX, "approvalLimit": -5}, NORTHSTAR),
+    ({**ALEX, "approvalLimit": "lots"}, NORTHSTAR),
+    ({**ALEX, "approvalLimit": 10.555}, NORTHSTAR),
+    ({**ALEX, "approvalLimit": True}, NORTHSTAR),
+    ({k: v for k, v in ALEX.items() if k != "employeeId"}, NORTHSTAR),
+])
+def test_dashboard_bad_profiles_rejected(env, user, company):
+    status, body = env.dashboard(CHARGER, user=user, company=company)
+    assert (status, body["decision"]) == (400, "bad_request")
+
+
+def test_dashboard_dollar_amounts_become_integer_cents(env):
+    _, body = env.dashboard(CHARGER, user={**ALEX, "approvalLimit": 1234.5})
+    assert body["limits"]["max_total_cents"] == 123450
+
+
+def test_dashboard_retry_returns_first_answer(env):
+    first = env.dashboard(CHARGER, request_id="req-r")
+    again = env.dashboard(CHARGER, request_id="req-r")
+    assert again[0] == 200 and again[1]["duplicate"] is True
+    assert {**again[1], "duplicate": None} == {**first[1], "duplicate": None}
+    assert len(env.engine.received) == 1
+    assert env.proxy.audit.entries()[-1]["decision"] == "duplicate_request"
+
+    refused = env.dashboard("gift card", request_id="req-g")
+    assert env.dashboard("gift card", request_id="req-g")[0] == refused[0] == 403
+
+    status, body = env.dashboard("a different thing", request_id="req-r")
+    assert (status, body["decision"]) == (409, "conflict")
+
+    restarted = TestClient(create_app(env.settings, parser=RuleSpecParser(), engine=env.engine, clock=env.clock))
+    r = restarted.post("/orders", headers={"Authorization": "Bearer test-token"}, json={
+        "request": {"id": "req-r", "createdAt": "x", "text": CHARGER}, "userConfig": ALEX, "companyConfig": NORTHSTAR})
+    assert r.json()["order_id"] == first[1]["order_id"] and r.json()["duplicate"] is True
+    assert len(env.engine.received) == 1
+
+
+def test_dashboard_retry_after_engine_error_runs_again(make_env):
+    calls = []
+
+    def handler(request):
+        calls.append(1)
+        return httpx.Response(500) if len(calls) == 1 else httpx.Response(200, json={"ok": True})
+    env = make_env(engine=HttpEngine("http://engine.test", transport=httpx.MockTransport(handler)))
+    assert env.dashboard(CHARGER, request_id="req-e")[0] == 502
+    status, body = env.dashboard(CHARGER, request_id="req-e")
+    assert (status, body["decision"]) == (200, "accepted") and "duplicate" not in body
+    assert len(calls) == 2
+
+
+def test_dashboard_purchase_checked_but_leaves_acme_counters(env):
+    _, order = env.dashboard(CHARGER)
+    assert env.purchase(order["order_id"], 500001)[0] == 409
+    status, body = env.purchase(order["order_id"], 200000)
+    assert (status, body["decision"]) == (200, "recorded")
+    assert env.proxy.policy.spend("J-1042") == (21000, 64000)
+    assert env.order(CHARGER)[1]["limits"]["max_total_cents"] == 50000

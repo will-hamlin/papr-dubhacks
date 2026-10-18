@@ -54,6 +54,23 @@ One line each. Lines marked **[contract]** affect the demo website or the engine
 - `handle_purchase` has no `await` between its checks and the counter update, so concurrent reports for one order can't both record.
 - Every `POST /purchases` writes exactly one audit entry: `kind=purchase` when recorded, `purchase_attempt` otherwise.
 
+## Employee dashboard envelope  **[contract]**
+- `POST /orders` also takes the dashboard's own body, `{request: {id, createdAt, text}, userConfig, companyConfig}` (generic-enterprise/DASHBOARD.md), unchanged; where the two designs differed, the proxy follows the dashboard. A body with a `request` key takes this path; the signed-auth `{auth, request_text}` shape still works.
+- Auth is the dashboard's bearer token: `Authorization: Bearer <PROXY_API_TOKEN>` (`make dev` sets `dev-only-token`). With no token configured, dashboard requests are 401 (fail closed).
+- The user and limit come from the dashboard profiles, not `data/users.json`. That trusts whoever holds the token: anyone who can edit a profile in the dashboard can raise their own limit.
+- `approvalLimit` and `approvalRequiredAbove` are whole dollars (the seed values are 0–50,000) and become integer cents via `Decimal`. More than 2 decimal places, negative, non-numeric or boolean is 400.
+- The order cap is `approvalLimit`, lowered to the company's `approvalRequiredAbove` when set, because the proxy has no approval step (Alex Morgan: $5,000, not $50,000).
+- `approvalLimit` 0 is a $0 spend limit, so 403 `not_authorized` (Jamie Chen); the dashboard has no separate purchasing-enabled flag.
+- Acme's daily and per-job caps in `data/` don't apply to dashboard orders (the profiles have none), and `/purchases` on those orders doesn't move Acme's counters; the purchase is still checked against the order's `max_total_cents`, deduped and audited.
+- Blocked categories and keywords, the quantity range, tax and freight still come from `data/company_policy.json`; the dashboard profiles have none of these.
+- `preferredVendors` goes to the engine as `limits.preferred_vendors` (names, max 20). It doesn't change `approved_suppliers`.
+- `userConfig.companyId` must equal `companyConfig.companyId`, and both currencies must be USD (or absent), else 400.
+- The engine payload gains `company: {id, name}` for both request shapes, and `requester.ship_to` is the company's `billingAddress` for dashboard orders.
+- Retries follow the dashboard: the same `request.id` with the same employee, company and text returns the first answer again (same status, same `order_id`, plus `duplicate: true`) without re-running the parser or engine.
+- 400, 401, 409, 502 and 503 are not replayed, so a retry after a fixed token or a recovered engine runs fresh.
+- The same `request.id` with a different employee, company or text, or while the first is still in flight, is 409 `conflict`.
+- Replayable answers are stored in the audit entry (`response`), so dedupe survives a restart; each replay writes its own `duplicate_request` audit entry.
+
 ## State and audit
 - Policy is always read from `data/company_policy.json`; only spend counters live in `var/spend.json` (seeded from the policy file, daily reset at local midnight in America/Los_Angeles).
 - The proxy learns about completed purchases through `POST /purchases` (below), which moves `spent_today_cents` and `spent_by_job`.

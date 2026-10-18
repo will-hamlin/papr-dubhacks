@@ -27,15 +27,19 @@ def normalize_category(category: str) -> str:
     return category.strip().lower().replace("-", "_").replace(" ", "_")
 
 
-def ceiling_cents(user: User, policy: Policy, spent_today: int, spent_on_job: int) -> int:
-    """Most the user may spend on one order right now, tax and freight included."""
+def ceiling_cents(user: User, policy: Policy, spent_today: int, spent_on_job: int, company_caps: bool = True) -> int:
+    """Most the user may spend on one order right now, tax and freight included.
+    company_caps=False: only the user's own limit applies (dashboard profiles carry no daily/job caps)."""
+    if not company_caps:
+        return max(0, user.spend_limit_cents)
     caps = [user.spend_limit_cents, policy.daily_cap_cents - spent_today]
     if user.job_number:
         caps.append(policy.per_job_cap_cents - spent_on_job)
     return max(0, min(caps))
 
 
-def authorize(user: User | None, policy: Policy, spent_today: int, spent_on_job: int) -> list[str]:
+def authorize(user: User | None, policy: Policy, spent_today: int, spent_on_job: int,
+              company_caps: bool = True) -> list[str]:
     """User-level checks. Empty list = authorized."""
     if user is None:
         return ["unknown user"]
@@ -44,6 +48,8 @@ def authorize(user: User | None, policy: Policy, spent_today: int, spent_on_job:
         reasons.append(f"purchasing is disabled for {user.name} ({user.role})")
     if user.spend_limit_cents <= 0:
         reasons.append(f"{user.name} has a $0.00 spend limit")
+    if not company_caps:
+        return reasons
     if spent_today >= policy.daily_cap_cents:
         reasons.append(f"company daily cap {money(policy.daily_cap_cents)} already reached")
     if user.job_number and spent_on_job >= policy.per_job_cap_cents:
@@ -199,8 +205,8 @@ class Search:
 
 
 def build_search(proposal: SpecProposal, user: User, policy: Policy, spent_today: int, spent_on_job: int,
-                 default_weights: dict[str, int]) -> Search:
-    ceiling = ceiling_cents(user, policy, spent_today, spent_on_job)
+                 default_weights: dict[str, int], company_caps: bool = True) -> Search:
+    ceiling = ceiling_cents(user, policy, spent_today, spent_on_job, company_caps)
     notes = []
     max_total = ceiling
     stated = proposal.stated_budget_cents

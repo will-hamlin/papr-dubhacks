@@ -38,7 +38,7 @@ def create_app(settings: Settings | None = None, parser=None, engine: Engine | N
             raw = await request.json()
         except (json.JSONDecodeError, UnicodeDecodeError):
             raw = None
-        out = await proxy.handle_order(raw)
+        out = await proxy.handle_order(raw, request.headers.get("authorization"))
         return JSONResponse(out.body, status_code=out.status)
 
     @app.post("/purchases")
