@@ -65,9 +65,11 @@ def client_config(raw):
             'response_types': ['code'], 'scope': SCOPE}
 
 
-def page(title, body, status=200):
+def page(title, body, status=200, *, refresh_url=None):
+    refresh = f'<meta http-equiv="refresh" content="0;url={html.escape(refresh_url)}">' if refresh_url else ''
     return HTMLResponse(f'''<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{html.escape(title)} · PAPR</title>
+{refresh}
 <style>body{{font:16px system-ui;background:#f5f5f1;color:#212b25;max-width:480px;margin:7vh auto;padding:24px}}
 main{{background:white;border:1px solid #ddd;border-radius:12px;padding:32px}}label{{display:block;margin-top:18px}}
 input{{display:block;box-sizing:border-box;width:100%;padding:10px;margin-top:6px}}button{{padding:11px 18px;margin:22px 8px 0 0;cursor:pointer}}
@@ -218,11 +220,6 @@ class OAuth:
                     f'<button name="decision" value="allow">{"Connect agent" if consent else "Sign in"}</button>'
                     '<button name="decision" value="deny" formnovalidate>Cancel</button></form>')
             response = page('Connect your agent' if consent else 'Sign in', body)
-            if data.get('oauth'):
-                callback = urlsplit(data['oauth']['redirect_uri'])
-                callback_origin = callback.scheme + '://' + callback.netloc
-                response.headers['Content-Security-Policy'] = HEADERS['Content-Security-Policy'].replace(
-                    "form-action 'self'", "form-action 'self' " + callback_origin)
             response.set_cookie(CSRF_COOKIE, csrf, max_age=600, httponly=True, secure=self.secure, samesite='lax', path='/account')
             return response
 
@@ -378,4 +375,11 @@ class OAuth:
         query = parse_qsl(parsed.query) + list(result.items())
         if 'state' in params:
             query.append(('state', params['state']))
-        return RedirectResponse(urlunsplit(parsed._replace(query=urlencode(query))), status_code=303, headers=HEADERS)
+        target = urlunsplit(parsed._replace(query=urlencode(query)))
+        # Finish the form navigation before leaving PAPR. Otherwise form-action also
+        # blocks downstream redirects owned by the client (e.g. Meta -> Muse).
+        response = page('Returning to your agent', '<p>Your choice has been saved. Returning to your agent…</p>'
+                        f'<p><a id="oauth-return" href="{html.escape(target)}" rel="noreferrer">Continue to your agent</a></p>',
+                        refresh_url=target)
+        response.headers['Referrer-Policy'] = 'no-referrer'
+        return response

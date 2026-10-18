@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import hashlib
+import html
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -63,14 +64,24 @@ def fields(page):
     return dict(re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]+)">', page.text))
 
 
+def callback_url(response):
+    assert response.status_code == 200, response.text
+    assert 'location' not in response.headers
+    target = html.unescape(re.search(r'id="oauth-return" href="([^"]+)"', response.text)[1])
+    assert f'content="0;url={html.escape(target)}"' in response.text
+    assert response.headers['referrer-policy'] == 'no-referrer'
+    assert response.headers['cache-control'] == 'no-store'
+    assert "form-action 'self';" in response.headers['content-security-policy']
+    return target
+
+
 def code(env, email=None, decision='allow'):
     env['client'].cookies.clear()
     response, verifier = start_flow(env)
     assert response.status_code == 200
     response = env['client'].post('/account/login', data={**fields(response), 'email': email or env['user']['email'],
                                                         'password': PASSWORD, 'decision': decision}, follow_redirects=False)
-    assert response.status_code == 303, response.text
-    params = parse_qs(urlsplit(response.headers['location']).query)
+    params = parse_qs(urlsplit(callback_url(response)).query)
     assert params['state'] == ['original-state']
     return params, verifier
 
@@ -202,8 +213,7 @@ def test_optional_resource_remains_bound_through_login_and_refresh(account_env, 
     assert page.status_code == 200
     consent = e['client'].post('/account/login', data={**fields(page), 'email': e['user']['email'],
                                'password': PASSWORD, 'decision': 'allow'}, follow_redirects=False)
-    assert consent.status_code == 303
-    callback = parse_qs(urlsplit(consent.headers['location']).query)
+    callback = parse_qs(urlsplit(callback_url(consent)).query)
     assert callback['state'] == ['muse']
     auth_code = callback['code'][0]
     assert e['store'].get(auth_code, 'code')['resource'] == resource
@@ -293,6 +303,32 @@ def test_browser_form_origin_login_and_logout(account_env):
                                headers={'Origin': e['settings'].public_url}, follow_redirects=False)
     assert response.status_code == 303
     assert e['client'].get('/account', follow_redirects=False).headers['location'] == '/account/login'
+
+
+@pytest.mark.parametrize('decision', ['allow', 'deny'])
+def test_oauth_completion_ends_form_navigation_and_preserves_callback(account_env, decision):
+    e = account_env
+    login(e)
+    redirect = 'https://agent.example/callback?existing=one%26two'
+    client_id = e['store'].save_client(client_config({'redirect_uris': [redirect]}))
+    state = 'state<&"\' + spaces'
+    response, verifier = start_flow(e, client_id=client_id, redirect_uri=redirect, state=state)
+    assert 'name="password"' not in response.text
+    assert "form-action 'self';" in response.headers['content-security-policy']
+    form = {**fields(response), 'decision': decision}
+    complete = e['client'].post('/account/login', data=form, follow_redirects=False)
+    target = urlsplit(callback_url(complete))
+    assert target.scheme == 'https' and target.netloc == 'agent.example' and target.path == '/callback'
+    query = parse_qs(target.query)
+    assert query['existing'] == ['one&two'] and query['state'] == [state]
+    assert '<form' not in complete.text
+    assert e['client'].post('/account/login', data=form).status_code == 400
+    if decision == 'deny':
+        assert query['error'] == ['access_denied'] and 'code' not in query
+    else:
+        tokens = exchange(e, query['code'][0], verifier, client_id=client_id, redirect_uri=redirect)
+        assert tokens.status_code == 200
+        assert exchange(e, query['code'][0], verifier, client_id=client_id, redirect_uri=redirect).status_code == 400
 
 
 def test_legacy_config_disabled_and_audit_private(account_env):
