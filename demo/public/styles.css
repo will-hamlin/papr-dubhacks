@@ -122,6 +122,40 @@ td small { display: block; margin-top: 5px; font-size: 11px; color: #7b8494; }
 .candidate-review li { padding: 9px 0; border-top: 1px solid var(--border); font-size: 11px; line-height: 1.7; }
 .candidate-review li span { display: block; color: var(--muted); overflow-wrap: anywhere; }
 .evidence-source { font-size: 10px; margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; }
+.requirements-card { background: #f6f8fb; border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin: 20px 0; }
+.requirements-card h3 { font-size: 17px; margin: 8px 0; }
+.requirements-card p { font-size: 12px; color: #596579; line-height: 1.6; }
+.requirement-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 7px; padding: 0; margin: 12px 0 0; }
+.requirement-tags li { font-size: 11px; line-height: 1.5; background: white; border: 1px solid #e1e7ef; border-radius: 4px; padding: 5px 8px; }
+.proof-overview { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 18px; }
+.proof-metric { display: flex; flex-direction: column; gap: 4px; padding: 16px; background: #fafbfc; }
+.proof-metric + .proof-metric { border-left: 1px solid var(--border); }
+.proof-metric strong { font-size: 26px; font-weight: 600; line-height: 1.2; }
+.proof-metric span { font-size: 11px; color: #596579; }
+.proof-metric.proven strong { color: #216b4b; }
+.proof-metric.rejected strong { color: #a34838; }
+.proof-metric.unknown strong { color: #8c641d; }
+.proof-badge { display: inline-block; font-size: 10px; font-weight: 600; line-height: 1.5; padding: 4px 8px; border-radius: 4px; margin-bottom: 12px; background: #fff5df; color: #795414; }
+.proof-badge.proven { background: #e9f5ed; color: #216b4b; }
+.proof-badge.rejected, .proof-badge.vacuous, .proof-badge.inconsistent_requirements { background: #fbede9; color: #9a3d30; }
+.proof-reason, .failed-conditions { font-size: 12px; line-height: 1.7; margin: 12px 0; }
+.failed-conditions { color: #9a3d30; }
+.proof-details, .check-details { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 12px; }
+.proof-details summary, .check-details summary { cursor: pointer; font-size: 11px; font-weight: 600; color: #52627b; padding: 4px 0; }
+.review-needed { border: 1px solid #ecd8a9; background: #fffbf2; padding: 18px; border-radius: 8px; margin: 16px 0; }
+.review-needed h3 { font-size: 14px; }
+.review-needed p { font-size: 12px; line-height: 1.7; margin: 10px 0; }
+.review-needed a { display: inline-block; text-decoration: none; }
+.request-examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 18px; }
+.request-examples button { border: 1px solid #dce3ed; border-radius: 5px; background: #f8fafc; color: #425470; font-size: 11px; padding: 8px 10px; text-align: left; }
+.request-examples button:hover { border-color: var(--accent); background: #eff4fc; }
+.receipt-actions { display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+@media (max-width: 540px) {
+  .tracking-toolbar { align-items: stretch; flex-direction: column; gap: 8px; }
+  .receipt-actions .button { flex: 1; padding: 10px 8px; }
+  .proof-metric { padding: 12px; }
+  .requirements-card { padding: 14px; }
+}
 .empty-state { padding: 32px 20px 34px; text-align: center; }
 .empty-icon { display: grid; place-items: center; margin: 0 auto 12px; width: 42px; height: 42px; border-radius: 8px; color: #7c8ba2; background: #f0f3f8; }
 .empty-icon svg { width: 27px; height: 27px; }

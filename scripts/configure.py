@@ -131,7 +131,7 @@ def check(values: dict[str, str], *, full=False) -> dict:
         if not key or key == 'vpk_pbapo_dev_only':
             errors.append('Verifier bearer credential is missing or still the old development default')
     else:
-        warnings.append('Stub backend is active; managed search and formal verification are unavailable')
+        warnings.append('Stub backend is active; managed search is unavailable. Submitted listings still receive local Z3 checks.')
     if values.get('VP_PROXY_MODE', values.get('ENGINE_MODE', 'supervised')) != 'supervised':
         errors.append('This configuration supports supervised backend mode only; purchasing is not enabled')
     try:
@@ -193,7 +193,7 @@ def main(argv=None):
         if args.demo:
             report['effective_engine'] = 'demo_fixture'
             report['warnings'] = [message for message in report['warnings'] if not message.startswith('Stub backend')]
-            report['warnings'].append('Demo supplier evidence is fictional; no live search, formal proof, or purchase')
+            report['warnings'].append('Demo supplier evidence is fictional; Z3 proofs are real. No live search or purchase.')
         print(json.dumps(report, indent=2))
         if not report['ok']:
             return 1

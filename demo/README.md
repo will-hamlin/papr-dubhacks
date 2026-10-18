@@ -11,6 +11,12 @@ Personal agents instead use [account login and OAuth/MCP](../proxy/ACCOUNTS.md),
 
 ## Employee request progress
 
+For the complete integrated stack, run `python scripts/run_demo.py` from the repository root
+and open http://127.0.0.1:3100. The two example buttons fill charger/laptop requests without
+submitting them. Results show the compiled requirements, real Z3 proof outcomes, source and
+proof hashes, and a downloadable JSON proof receipt. The fictional catalog remains clearly
+labeled. See [the demo guide](../docs/DEMO.md).
+
 After submitting, the employee demo opens the request details and follows the actual proxy/MS lifecycle. **Request order → Your requests → View** reopens saved records. Accepted requests update every five seconds until processing finishes; **Refresh status** checks again manually. Details show listing claim checks and required conditions separately, including contradictory or missing evidence. A completed workflow or supported evidence does not authorize or place a purchase. If the MS marks a run as a demo, the view explicitly labels simulated supplier evidence. Proxy denials are saved with their reason, without polling access.
 
 For the legacy demo connector, the proxy issues a per-request `request_token`. The Node relay retains that token in memory and returns an opaque tracking handle to the browser. `/api/request-status` accepts only a previously issued handle; its destination and token come from that recorded submission, never a polling URL supplied by the browser. Redirects and cross-origin browser requests are rejected, and responses are bounded. No operator signing secret is needed or exposed. The browser saves at most 25 request records and their latest results locally; it does not store the upstream request access token.

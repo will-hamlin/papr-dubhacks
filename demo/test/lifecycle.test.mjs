@@ -71,6 +71,50 @@ test('denied requests are saved with the proxy reason and do not request status 
   assert.equal(app.polls.length, 0);
 });
 
+test('formal results distinguish proof, rejection and missing evidence and expose audit bindings', async t => {
+  const result = structuredClone(complete);
+  result.result.specs = { item: 'USB-C charger', quantity: 1, condition: 'new', english: ['power ≥ 65 W (required)'] };
+  result.result.limits = { max_total_cents: 4000 };
+  result.result.verification.candidates = ['proven', 'rejected', 'unknown'].map((status, index) => ({
+    ...complete.result.verification.candidates[0], candidate_id: `candidate-${index}`, simulated: true,
+    formal_proof: { status, engine: 'agent-purchase-verifier / Z3', reason: `Proof outcome ${status}`,
+      requirements_id: 'bound-requirements', receipt_hash: 'receipt-sha', evidence_sha256: 'source-sha',
+      missing_fields: status === 'unknown' ? ['power'] : [] },
+  }));
+  const app = await openApp(accepted, [{ body: result }]);
+  t.after(() => app.window.close());
+  assert.equal(app.query('.proof-metric.proven strong').textContent, '1');
+  assert.equal(app.query('.proof-metric.rejected strong').textContent, '1');
+  assert.equal(app.query('.proof-metric.unknown strong').textContent, '1');
+  assert.match(app.query('.requirements-card').textContent, /USB-C charger.*\$40\.00/);
+  assert.match(app.query('#verification-summary').textContent, /Requirements proven.*Requirements not met.*Evidence incomplete/s);
+  assert.match(app.query('.proof-details').textContent, /bound-requirements.*source-sha.*receipt-sha/s);
+  assert.equal(app.query('#download-proof').disabled, false);
+});
+
+test('backend review is actionable and unsafe approval URLs never become links', async t => {
+  const result = { status: 'submitted', result: { engine: { status: 'escalated',
+    approval_url: 'http://127.0.0.1:8002/#/requests/review', questions: [{ text: 'Which size?' }] } } };
+  const bad = structuredClone(result); bad.result.engine.approval_url = 'javascript:alert(1)';
+  const app = await openApp(accepted, [{ body: result }, { body: bad }]);
+  t.after(() => app.window.close());
+  assert.match(app.query('#request-history').textContent, /Review needed/);
+  assert.match(app.query('.review-needed').textContent, /Which size/);
+  assert.equal(app.query('.review-needed a').rel, 'noopener noreferrer');
+  app.query('#refresh-request').click(); await tick();
+  assert.equal(app.query('.review-needed a'), null);
+});
+
+test('example requests fill the form without submitting an order', async t => {
+  const app = await openApp(); t.after(() => app.window.close());
+  app.query('[aria-label="Close details"]').click();
+  app.query('#request-order').click();
+  const before = app.stored().history.length;
+  app.query('[data-example-request]').click();
+  assert.equal(app.query('#request-text').value, '65W USB-C charger under $40');
+  assert.equal(app.stored().history.length, before);
+});
+
 test('polling failures retain the last result, and expired access disables further polling', async t => {
   const app = await openApp(accepted, [{ body: complete }, { status: 502, body: { error: 'Status temporarily unavailable.' } }, { status: 410, body: { error: 'Tracking expired.' } }]);
   t.after(() => app.window.close());

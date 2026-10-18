@@ -281,4 +281,6 @@ class ListingVerifier:
                                        (specs.get('category') in known_categories and category_value != specs['category']) else 'supported'})
         result.update(facts=facts, claim_checks=claims, requirement_checks=requirements,
                       claims_status=aggregate(claims), requirements_status=aggregate(requirements))
+        from .formal import prove_listing
+        result['formal_proof'] = prove_listing(result, specs, limits)
         return result

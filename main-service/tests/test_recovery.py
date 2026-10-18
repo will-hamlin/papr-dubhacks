@@ -164,6 +164,23 @@ def test_polling_is_bounded_and_rotates_past_failing_backend_jobs(tmp_path):
     assert current.engine.polled == ['o_0', 'o_1', 'o_2', 'o_3', 'o_4', 'o_5', 'o_6', 'o_0', 'o_1']
 
 
+def test_escalation_keeps_polling_after_human_review(tmp_path):
+    class NeedsReview(Backend):
+        async def search(self, payload):
+            return {'request_id': 'review', 'status': 'escalated', 'approval_url': 'http://127.0.0.1:8002/#/requests/review'}
+
+        async def status(self, request_id):
+            return {'status': 'completed', 'approval_url': None}
+
+    current = service(tmp_path, engine=NeedsReview())
+    payload = handoff()
+    current.receive(payload)
+    asyncio.run(current.process_next())
+    assert current.store.get(payload['order_id'])['status'] == 'submitted'
+    asyncio.run(current.refresh_results())
+    assert current.store.get(payload['order_id'])['status'] == 'completed'
+
+
 def test_backend_polling_continues_while_local_queue_work_is_blocked(tmp_path):
     async def exercise():
         started, release, polled = asyncio.Event(), asyncio.Event(), asyncio.Event()

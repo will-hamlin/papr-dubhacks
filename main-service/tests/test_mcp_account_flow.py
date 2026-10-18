@@ -100,6 +100,10 @@ def test_official_mcp_oauth_client_to_ms_verification(tmp_path):
                         verified = (await session.call_tool('get_request', {'order_id': order_id})).structuredContent
                         assert verified['status'] == 'verification_complete'
                         assert verified['result']['verification']['candidates'][0]['claims_status'] == 'supported'
+                        proof = verified['result']['verification']['candidates'][0]['formal_proof']
+                        assert proof['status'] == 'proven'
+                        assert proof['requirements_id'] == batch['requirements_id']
+                        assert proof['purchase_authorized'] is False
                         repeated = await session.call_tool('submit_candidates', {'order_id': order_id, 'submission': batch})
                         assert repeated.structuredContent['duplicate'] is True
                         assert len(pages.calls) == 1 and engine.received == []

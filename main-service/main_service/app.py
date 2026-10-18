@@ -76,7 +76,8 @@ def create_app(settings: Settings | None = None, parser=None, engine=None, verif
 
     @app.get('/health')
     def health():
-        return {'ok': True, 'parser': service.parser.name, 'engine': service.engine.name}
+        return {'ok': True, 'parser': service.parser.name, 'engine': service.engine.name,
+                'formal_verifier': 'agent-purchase-verifier / Z3'}
 
     @app.post('/handoffs')
     async def receive(request: Request):

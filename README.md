@@ -42,6 +42,23 @@ MS independently fetches supplier-published structured product data and records 
 or unverified claims and compiled requirements. There is no candidate ranking or optimality check.
 This is evidence checking, not a guarantee that a seller's statements are physically true or permission to purchase.
 
+MS also runs the pinned `agent-purchase-verifier` Z3 core against those fetched facts and PAPR's
+compiled requirements. Each proof is bound to the requirements ID, policy contract and source snapshot.
+The employee demo distinguishes proven, rejected and unresolved results and exports proof receipts.
+The solver reasons from published evidence and explicit identity/policy assumptions; it does not certify a seller.
+
+### Integrated demo
+
+```powershell
+python -m pip install -r proxy/requirements.txt -r main-service/requirements.txt
+python scripts/run_demo.py
+```
+
+Open http://127.0.0.1:3100. The launcher uses isolated data, proxy port 8200 and MS port 8201.
+It runs deterministic parsing and fictional listings with real Z3 proofs; no provider credentials are needed.
+`python scripts/run_demo.py --smoke` checks charger, laptop and personal-agent workflows and stops the stack.
+See [DEMO.md](docs/DEMO.md) and [integration details](docs/VERIFIER_INTEGRATION.md).
+
 ## Run locally (PowerShell, from this repository root)
 
 For a complete local walkthrough with real checks and explicitly fictional supplier evidence,
@@ -87,10 +104,10 @@ Open http://127.0.0.1:3000. On Unix, use `.venv/bin/python` and `export NAME=val
 Component Makefiles also provide `make dev` and `make test` on Unix.
 
 Without `ENGINE_URL`, MS runs the existing stub and records `not_searched` after preparing requirements.
-For live product search and SMT solving, configure **MS**, not the proxy, with `ENGINE_URL`,
+For optional live product search through the external app, configure **MS**, not the proxy, with `ENGINE_URL`,
 `ENGINE_KIND=agent_v1`, `VP_AGENT_KEY`, and `VP_PROXY_MODE` for the existing
 [agent-purchase-verifier](https://github.com/mtptru/agent-purchase-verifier) backend.
-That backend's implementation remains in its separate repository. Run it on a distinct port
+That backend's full application remains in its separate repository; its solver core is pinned locally in MS. Run the external app on a distinct port
 (e.g. 8002); 8001 now belongs to MS. Its shared secret must match MS.
 
 ## Verify

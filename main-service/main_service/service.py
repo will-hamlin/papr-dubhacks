@@ -16,6 +16,7 @@ from .spec import DEFAULT_WEIGHTS, FallbackSpecParser, make_parser
 from .store import RequestStore
 from .candidates import Candidate, CandidateSubmission
 from .verification import ListingVerifier
+from .formal import bind_proof, unavailable
 from pydantic import ValidationError
 
 log = logging.getLogger(__name__)
@@ -90,8 +91,13 @@ class MainService:
     async def verify_candidates(self, candidates, result, source):
         reports = []
         for candidate in candidates:
-            reports.append(await self.verifier.verify(candidate, result['specs'], result['limits']))
+            report = await self.verifier.verify(candidate, result['specs'], result['limits'])
+            report['formal_proof'] = bind_proof(
+                report.get('formal_proof') or unavailable(report.get('reason', 'No usable listing evidence.')),
+                result['requirements_id'])
+            reports.append(report)
         return {'source': source, 'requirements_id': result['requirements_id'], 'candidates': reports,
+                'formal_verifier': 'agent-purchase-verifier / Z3',
                 'scope': 'published_listing_claims_and_compiled_constraints', 'purchase_authorized': False}
 
     async def verify_managed_candidates(self, result):
@@ -209,7 +215,7 @@ class MainService:
         status = 'not_searched' if engine_kind == 'stub' else 'submitted'
         if engine_kind != 'stub' and engine_status in ('purchased', 'completed', 'verified'):
             status = 'completed'
-        elif engine_status in ('failed', 'escalated'):
+        elif engine_status == 'failed':
             status = 'failed'
         result['engine_status'] = engine_status
         result.pop('processing_stage', None)
@@ -243,7 +249,7 @@ class MainService:
             status = 'submitted'
             if view.get('status') in ('purchased', 'completed', 'verified'):
                 status = 'completed'
-            elif view.get('status') in ('failed', 'escalated'):
+            elif view.get('status') == 'failed':
                 status = 'failed'
             if (view.get('candidates') or view.get('top') or status == 'completed') and (
                     result['engine'] != engine or 'verification' not in result):

@@ -69,7 +69,7 @@ class DemoEngine:
         slugs = ['charger-65', 'charger-30', 'stapler'] if 'charger' in item else \
                 ['laptop-32', 'laptop-16', 'stapler'] if 'laptop' in item else []
         return {'status': 'completed', 'demo': True, 'purchase_authorized': False,
-                'message': 'Simulated catalog lookup; no live search, formal proof, or purchase',
+                'message': 'Fictional catalog; real listing checks and Z3 proofs. No live search or purchase.',
                 'candidates': [candidate(slug) for slug in slugs]}
 
 
