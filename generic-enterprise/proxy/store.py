@@ -20,7 +20,8 @@ def load_users(data_dir: Path) -> dict[str, User]:
 
 class PolicyStore:
     """Policy always comes from data/company_policy.json. Only spend state lives in var/spend.json,
-    seeded from the policy file's spent_* fields the first time the proxy starts."""
+    seeded from the policy file's spent_* fields the first time the proxy starts and moved by
+    record_purchase when the engine reports a completed purchase."""
 
     def __init__(self, data_dir: Path, var_dir: Path, clock: Callable[[], datetime]):
         self.clock = clock
@@ -54,3 +55,11 @@ class PolicyStore:
             self._write()
         on_job = self.policy.spent_by_job.get(job, 0) if job else 0
         return self.policy.spent_today_cents, on_job
+
+    def record_purchase(self, job: str | None, cents: int) -> None:
+        """Add a completed purchase to today's spend and its job's spend, then persist."""
+        self.spend(job)  # roll the daily counter over first if the date changed
+        self.policy.spent_today_cents += cents
+        if job:
+            self.policy.spent_by_job[job] = self.policy.spent_by_job.get(job, 0) + cents
+        self._write()

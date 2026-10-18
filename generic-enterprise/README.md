@@ -9,7 +9,8 @@ For each order it decides:
 
 Orders that fail get a failure notice with the reason. Orders that pass become **typed specs + integer weights +
 a priority order + spending limits**. These are signed and POSTed to the engine, and the engine's answer is returned
-to the caller. Every call writes one entry to a hash-chained audit log.
+to the caller. When the engine reports a completed
+purchase (`POST /purchases`), the spend counters move. Every call writes one entry to a hash-chained audit log.
 
 The proxy never holds payment credentials, never picks a product, and never lets request text raise a limit.
 
@@ -47,6 +48,23 @@ Build `auth` with `proxy/signing.py` → `make_auth(user_id, secret)` (stdlib on
 | 502 / 503 | `engine_error` / `parser_error` | Engine or parser failed (fail closed) |
 
 Every response has `ok`, `order_id`, `decision`, and `reason` when it failed.
+
+`POST /purchases`: the engine / payment gate reports a completed purchase so the spend counters move.
+```json
+{"order_id": "o_…", "total_cents": 40000, "proxy_sig": "<hex>"}
+```
+Sign it with `sign_payload({"order_id": …, "total_cents": …}, secret)` from `proxy/signing.py`. `total_cents` is the
+final integer total (items + tax + freight). It's added to today's company spend and to the order's job, so later
+orders get a smaller `limits.max_total_cents`.
+
+| HTTP | `decision` | When |
+|---|---|---|
+| 200 | `recorded` | Spend updated |
+| 200 | `duplicate` | Same `order_id` and total already recorded; nothing changes |
+| 400 | `bad_request` | Body isn't exactly `order_id`, `total_cents`, `proxy_sig` |
+| 401 | `not_authorized` | Bad `proxy_sig` |
+| 404 | `unknown_order` | No accepted order with that `order_id` |
+| 409 | `over_limit` / `invalid_total` / `conflict` | Total above the order's `max_total_cents`, not a non-negative integer, or a different total for an already recorded order (flagged in the audit log) |
 
 `GET /audit`: all entries, plus `chain_valid`. `GET /health`: shows which parser and engine are active.
 

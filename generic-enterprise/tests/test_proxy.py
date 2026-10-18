@@ -7,9 +7,12 @@ from datetime import timedelta
 import httpx
 import pytest
 
+from fastapi.testclient import TestClient
+
+from proxy.app import create_app
 from proxy.engine import HttpEngine
 from proxy.models import Constraint, SpecProposal, Weight
-from proxy.signing import make_auth, sign, verify_payload
+from proxy.signing import make_auth, sign, sign_payload, verify_payload
 from proxy.spec import ClaudeSpecParser, FallbackSpecParser, ParseError, RuleSpecParser, money_to_cents
 from tests.conftest import SECRET
 
@@ -361,3 +364,79 @@ def test_condition_passed_through(env):
     assert body["specs"]["condition"] == "refurbished"
     _, body = env.order(CHARGER)
     assert body["specs"]["condition"] == "unspecified"
+
+
+# ---------------------------------------------------------------- completed purchases
+
+def test_purchase_moves_spend_so_next_order_ceiling_shrinks(env):
+    # Sam: min(limit 5000.00, daily 1500.00-210.00, job 3000.00-640.00) = 1290.00
+    _, first = env.order(CHARGER, user_id="u_sam")
+    assert first["limits"]["max_total_cents"] == 129000
+    status, body = env.purchase(first["order_id"], 40000)
+    assert (status, body["decision"], body["ok"]) == (200, "recorded", True)
+
+    _, second = env.order(CHARGER, user_id="u_sam")
+    assert second["limits"]["max_total_cents"] == 89000
+    spend = json.loads((env.settings.var_dir / "spend.json").read_text())
+    assert spend["spent_today_cents"] == 61000 and spend["spent_by_job"]["J-1042"] == 104000
+
+    entry = env.proxy.audit.entries()[-2]
+    assert entry["kind"] == "purchase" and entry["order_id"] == first["order_id"] and entry["total_cents"] == 40000
+    assert env.client.get("/audit").json()["chain_valid"] is True
+
+
+def test_purchase_bad_signature_rejected(env):
+    _, order = env.order(CHARGER)
+    status, body = env.purchase(order["order_id"], 1000, secret="other-secret")
+    assert (status, body["decision"]) == (401, "not_authorized")
+    tampered = {**sign_payload({"order_id": order["order_id"], "total_cents": 50000}, SECRET), "total_cents": 100}
+    assert env.client.post("/purchases", json=tampered).status_code == 401
+    assert env.client.post("/purchases", json={"order_id": order["order_id"]}).status_code == 400
+    assert env.proxy.policy.spend("J-1042") == (21000, 64000)
+
+
+def test_purchase_unknown_or_rejected_order(env):
+    status, body = env.purchase("o_doesnotexist", 1000)
+    assert (status, body["decision"]) == (404, "unknown_order")
+    _, rejected = env.order("buy a gift card")
+    status, _ = env.purchase(rejected["order_id"], 1000)
+    assert status == 404
+    assert env.proxy.policy.spend("J-1042") == (21000, 64000)
+
+
+@pytest.mark.parametrize("total,decision", [(50001, "over_limit"), (-1, "invalid_total"),
+                                            (100.0, "invalid_total"), ("100", "invalid_total"),
+                                            (True, "invalid_total")])
+def test_purchase_over_limit_or_bad_total_rejected_and_flagged(env, total, decision):
+    _, order = env.order(CHARGER)  # Jordan: max_total_cents 50000
+    status, body = env.purchase(order["order_id"], total)
+    assert (status, body["decision"], body["ok"]) == (409, decision, False)
+    entry = env.proxy.audit.entries()[-1]
+    assert entry["kind"] == "purchase_attempt" and entry["flagged"] is True
+    assert env.proxy.policy.spend("J-1042") == (21000, 64000)
+
+
+def test_purchase_exactly_at_limit_and_zero_accepted(env):
+    _, a = env.order(CHARGER)
+    _, b = env.order(CHARGER)
+    assert env.purchase(a["order_id"], 50000)[0] == 200
+    assert env.purchase(b["order_id"], 0)[0] == 200
+    assert env.proxy.policy.spend("J-1042") == (71000, 114000)
+
+
+def test_purchase_idempotent_per_order_including_after_restart(env):
+    _, order = env.order(CHARGER)
+    assert env.purchase(order["order_id"], 30000)[1]["decision"] == "recorded"
+    status, body = env.purchase(order["order_id"], 30000)
+    assert (status, body["decision"], body["ok"]) == (200, "duplicate", True)
+    status, body = env.purchase(order["order_id"], 20000)
+    assert (status, body["decision"]) == (409, "conflict")
+    assert env.proxy.policy.spend("J-1042") == (51000, 94000)
+    assert [e["kind"] for e in env.proxy.audit.entries()].count("purchase") == 1
+
+    restarted = create_app(env.settings, parser=RuleSpecParser(), engine=env.engine, clock=env.clock)
+    client = TestClient(restarted)
+    again = client.post("/purchases", json=sign_payload({"order_id": order["order_id"], "total_cents": 30000},
+                                                         SECRET)).json()
+    assert again["decision"] == "duplicate"
+    assert restarted.state.proxy.policy.spend("J-1042") == (51000, 94000)

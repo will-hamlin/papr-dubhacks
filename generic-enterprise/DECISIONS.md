@@ -40,9 +40,23 @@ One line each. Lines marked **[contract]** affect the demo website or the engine
 - Approved suppliers with no freight rate on file are left out of `limits.approved_suppliers` (fail closed).
 - The auto-buy threshold and manager approval were dropped with the approval flow; reintroduce them if the engine or demo site needs a human-approval step.
 
+## Completed purchases  **[contract]**
+- The engine / payment gate sends exactly `{order_id, total_cents, proxy_sig}`; `proxy_sig` is the same HMAC as the engine payload (`sign_payload` / `verify_payload`). Any other field set is 400.
+- Shape is checked before the signature (400 vs 401); nothing else about the body is read until the signature passes.
+- Only orders the proxy answered `accepted` (`kind=order`) are valid; refused orders and `engine_error` orders are 404 `unknown_order`.
+- Known orders and recorded purchases are rebuilt from the audit log at startup, so a restart keeps both validity and idempotency.
+- A non-int total (including `100.0`, `"100"`, `true`) or a negative one is 409 `invalid_total`, same status as over-limit, per the brief; both are `flagged: true` in the audit.
+- `total_cents == max_total_cents` is allowed (the limit is inclusive); `0` is allowed (e.g. fully credited).
+- The limit checked is the order's `max_total_cents` at the time it was accepted, not today's remaining cap; two orders accepted before either is purchased can together exceed a cap (ceilings clamp at 0 afterwards).
+- Idempotent per `order_id`: the same total again is 200 `duplicate` with no spend change; a different total is 409 `conflict` (flagged). Only the first gets `kind=purchase`.
+- The spend goes to the job recorded on the order (the user's job at order time) and to the daily counter of the day the purchase is reported, not the day it was ordered.
+- Spend is persisted before the audit entry is written: a crash in between over-counts spend (fails closed) rather than losing it.
+- `handle_purchase` has no `await` between its checks and the counter update, so concurrent reports for one order can't both record.
+- Every `POST /purchases` writes exactly one audit entry: `kind=purchase` when recorded, `purchase_attempt` otherwise.
+
 ## State and audit
 - Policy is always read from `data/company_policy.json`; only spend counters live in `var/spend.json` (seeded from the policy file, daily reset at local midnight in America/Los_Angeles).
-- The proxy doesn't learn about completed purchases yet, so spend counters don't move. A signed "purchase completed" hook is a follow-up.
+- The proxy learns about completed purchases through `POST /purchases` (below), which moves `spent_today_cents` and `spent_by_job`.
 - Every `POST /orders` writes exactly one audit entry: `kind=order` if accepted, `attempt` otherwise, with `decision` and `reason`.
 - The audit log is append-only JSONL; each entry carries `seq`, `prev_hash` and `hash` = SHA-256 of its canonical JSON. `GET /audit` reports `chain_valid`.
 - `GET /audit` is unauthenticated; run the proxy on an internal network or put it behind the demo site.

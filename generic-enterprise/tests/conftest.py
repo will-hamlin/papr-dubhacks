@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from proxy.app import create_app
 from proxy.engine import StubEngine
 from proxy.service import Settings
-from proxy.signing import make_auth
+from proxy.signing import make_auth, sign_payload
 from proxy.spec import RuleSpecParser
 
 DATA = Path(__file__).resolve().parent.parent / "data"
@@ -48,6 +48,11 @@ class Env:
 
     def order(self, text, user_id="u_jordan", auth=None):
         r = self.client.post("/orders", json={"auth": auth or self.auth(user_id), "request_text": text})
+        return r.status_code, r.json()
+
+    def purchase(self, order_id, total_cents, secret=SECRET):
+        body = sign_payload({"order_id": order_id, "total_cents": total_cents}, secret)
+        r = self.client.post("/purchases", json=body)
         return r.status_code, r.json()
 
 

@@ -41,6 +41,15 @@ def create_app(settings: Settings | None = None, parser=None, engine: Engine | N
         out = await proxy.handle_order(raw)
         return JSONResponse(out.body, status_code=out.status)
 
+    @app.post("/purchases")
+    async def purchases(request: Request):
+        try:
+            raw = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raw = None
+        out = proxy.handle_purchase(raw)
+        return JSONResponse(out.body, status_code=out.status)
+
     @app.get("/audit")
     def audit():
         ok, bad = proxy.audit.verify()

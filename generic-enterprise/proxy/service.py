@@ -1,7 +1,8 @@
 """Order pipeline: authenticate -> authorize -> propose spec -> policy check -> search payload -> engine.
+Purchase hook: the engine reports a completed purchase for an accepted order -> spend counters move.
 
 The proxy never holds payment credentials and never lets request text change limits or policy.
-Every call to handle_order writes exactly one audit entry.
+Every call to handle_order or handle_purchase writes exactly one audit entry.
 """
 
 from __future__ import annotations
@@ -19,11 +20,12 @@ from .audit import AuditLog
 from .engine import Engine, EngineError, HttpEngine, StubEngine
 from .gates import authorize, build_search, check_policy
 from .models import OrderBody
-from .signing import AuthError, check_auth, sign_payload
+from .signing import AuthError, check_auth, sign_payload, verify_payload
 from .spec import DEFAULT_WEIGHTS, FallbackSpecParser, ParseError, make_parser
 from .store import PolicyStore, load_users
 
 ROOT = Path(__file__).resolve().parent.parent
+PURCHASE_FIELDS = {"order_id", "total_cents", "proxy_sig"}
 
 
 @dataclass
@@ -72,10 +74,22 @@ class Proxy:
             self.engine = HttpEngine(settings.engine_url, settings.engine_path)
         else:
             self.engine = StubEngine()
+        # Rebuilt from the audit log so a restart remembers accepted orders and recorded purchases.
+        self.accepted: dict[str, dict] = {}   # order_id -> {max_total_cents, job_number}
+        self.purchased: dict[str, int] = {}   # order_id -> total_cents
+        for e in self.audit.entries():
+            if e.get("kind") == "order" and e.get("decision") == "accepted":
+                self.accepted[e["order_id"]] = {"max_total_cents": e["max_total_cents"],
+                                                "job_number": e.get("job_number")}
+            elif e.get("kind") == "purchase":
+                self.purchased[e["order_id"]] = e["total_cents"]
 
     def _done(self, order_id: str, status: int, decision: str, reason: str | None, record: dict,
               extra: dict | None = None) -> Outcome:
         ok = decision == "accepted"
+        if ok:
+            self.accepted[order_id] = {"max_total_cents": record["max_total_cents"],
+                                       "job_number": record.get("job_number")}
         self.audit.append({"at": _iso(self.clock()), "order_id": order_id,
                            "kind": "order" if ok else "attempt", "decision": decision, "reason": reason,
                            **record})
@@ -160,3 +174,54 @@ class Proxy:
         return self._done(order_id, 200, "accepted", None, record, {
             "parser": source, "notes": notes, "specs": search.specs, "weights": search.weights,
             "priority": search.priority, "limits": search.limits, "engine": result})
+
+    def _purchase_done(self, order_id: str | None, status: int, decision: str, reason: str | None,
+                       record: dict) -> Outcome:
+        ok = decision in ("recorded", "duplicate")
+        self.audit.append({"at": _iso(self.clock()), "order_id": order_id,
+                           "kind": "purchase" if decision == "recorded" else "purchase_attempt",
+                           "decision": decision, "reason": reason, **record})
+        body = {"ok": ok, "order_id": order_id, "decision": decision}
+        if reason:
+            body["reason"] = reason
+        return Outcome(status, body)
+
+    def handle_purchase(self, raw: Any) -> Outcome:
+        """The engine / payment gate reports a completed purchase. Synchronous on purpose: no await between
+        the checks and the counter update, so two reports for one order can't interleave."""
+        claimed = raw.get("order_id") if isinstance(raw, dict) else None
+        order_id = claimed[:64] if isinstance(claimed, str) else None
+        record: dict = {"total_cents": raw.get("total_cents") if isinstance(raw, dict) else None}
+
+        if not isinstance(raw, dict) or set(raw) != PURCHASE_FIELDS:
+            return self._purchase_done(order_id, 400, "bad_request",
+                                       "body must contain exactly order_id, total_cents, proxy_sig", record)
+        if not verify_payload(raw, self.settings.shared_secret):
+            return self._purchase_done(order_id, 401, "not_authorized", "bad signature", record)
+
+        order = self.accepted.get(claimed) if isinstance(claimed, str) else None
+        if order is None:
+            return self._purchase_done(order_id, 404, "unknown_order", "no accepted order with this order_id", record)
+        record.update(job_number=order["job_number"], max_total_cents=order["max_total_cents"])
+
+        total = raw["total_cents"]
+        if order_id in self.purchased:
+            if total == self.purchased[order_id] and type(total) is int:
+                return self._purchase_done(order_id, 200, "duplicate", None, record)
+            return self._purchase_done(order_id, 409, "conflict",
+                                       f"purchase already recorded with total_cents={self.purchased[order_id]}",
+                                       {**record, "flagged": True})
+        if type(total) is not int or total < 0:
+            return self._purchase_done(order_id, 409, "invalid_total",
+                                       "total_cents must be a non-negative integer", {**record, "flagged": True})
+        if total > order["max_total_cents"]:
+            return self._purchase_done(order_id, 409, "over_limit",
+                                       f"total_cents {total} exceeds the order's max_total_cents "
+                                       f"{order['max_total_cents']}", {**record, "flagged": True})
+
+        # Spend first, then audit: a crash in between over-counts (fails closed) rather than under-counts.
+        self.policy.record_purchase(order["job_number"], total)
+        self.purchased[order_id] = total
+        spent_today, spent_on_job = self.policy.spend(order["job_number"])
+        record.update(spent_today_cents=spent_today, spent_on_job_cents=spent_on_job)
+        return self._purchase_done(order_id, 200, "recorded", None, record)
