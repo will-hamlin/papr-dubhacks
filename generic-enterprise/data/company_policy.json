@@ -1,0 +1,25 @@
+{
+  "id": "acme",
+  "name": "Acme Corp (DEMO COMPANY)",
+  "timezone": "America/Los_Angeles",
+  "compliance_email": "purchasing-compliance@acme-demo.example",
+  "suppliers": {
+    "sup_01": "Cascade Electronics Supply",
+    "sup_02": "Overlake Surplus Liquidators",
+    "sup_03": "Puget Office & Tech"
+  },
+  "approved_suppliers": ["sup_01", "sup_03"],
+  "blocked_categories": ["weapons", "medicine", "age_restricted", "gift_cards"],
+  "auto_buy_threshold_cents": 50000,
+  "daily_cap_cents": 150000,
+  "per_job_cap_cents": 300000,
+  "tax_rate_bp": 1025,
+  "freight_cents_by_supplier": {
+    "sup_01": 0,
+    "sup_02": 1500,
+    "sup_03": 2500
+  },
+  "spent_today_cents": 21000,
+  "spent_by_job": {"J-1042": 64000},
+  "spent_date": null
+}
