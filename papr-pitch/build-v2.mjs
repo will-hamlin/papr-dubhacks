@@ -182,24 +182,30 @@ const systemFlow = {
   ['Natural language:\n“Laptop under $1,200,\n16 GB, ideally light.”',96,383,208,105,21,'Bahnschrift'],
   ['→',330,382,38,55,36],
   ['rect',368,292,248,232,B],
-  ['2 / Encode specs',388,315,208,40,28],
-  ['Must: ≤ $1,200\nRAM ≥ 16 GB\nPrefer: low weight',388,383,208,105,21,'Bahnschrift'],
+  ['2 / Authorize',388,315,208,40,28],
+  ['Approve or deny.\nSpecs: ≤ $1,200,\nRAM ≥ 16 GB.\nPrefer low weight.',388,383,208,105,21,'Bahnschrift'],
   ['→',622,382,38,55,36],
   ['rect',660,292,248,232,B],
   ['3 / Find + verify',680,315,208,40,28],
   ['Search products.\nVerify requirements.\nRank preferences.',680,383,208,105,21,'Bahnschrift'],
   ['→',914,382,38,55,36],
   ['rect',952,292,248,232,B],
-  ['4 / Decide + log',972,315,208,40,28],
-  ['Approve or deny.\nSave the request,\nsubmitter and reason.',972,383,208,105,21,'Bahnschrift'],
-  ['Required specs determine eligibility. Preferences rank the eligible matches.',82,581,1118,40,25]
+  ['4 / Purchase + log',972,315,208,40,26],
+  ['Place the order.\nSave the request,\nsubmitter and reason.',972,383,208,105,21,'Bahnschrift'],
+  ['Approved requests proceed to search and purchase. Denials are logged.',82,581,1118,40,25]
  ],
- notes:'Simplified overview with an illustrative laptop request: the user submits natural language plus company and user configuration. Authorization is checked before product search. papr translates the request into explicit required specifications and preferences: the example requires a price at most USD 1,200 and at least 16 GB RAM, while low weight is a preference. The agent searches for candidates and verifies encoded requirements against supplied evidence, ranking eligible discovered candidates by preferences. A formal check establishes consistency with the encoded conditions, not independent truth of vendor claims. Ambiguous specs require clarification. Failed authorization or unmet requirements can yield a denial without completing every stage shown. Both approvals and denials retain the request, submitter and proof-based reason. This diagram groups internal operations for presentation and does not claim a literal production trace.'
+ notes:'Simplified overview with an illustrative laptop request: the user submits natural language plus company and user configuration. Step 2 approves or denies the request against company and user rules and encodes its specifications and preferences. Only approved requests proceed to product search. papr translates the request into explicit required specifications and preferences: the example requires a price at most USD 1,200 and at least 16 GB RAM, while low weight is a preference. The agent searches for candidates and verifies encoded requirements against supplied evidence, ranking eligible discovered candidates by preferences. A formal check establishes consistency with the encoded conditions, not independent truth of vendor claims. Ambiguous specs require clarification. Failed authorization or unmet requirements can yield a denial without completing every stage shown. Step 4 purchases the verified match and logs the transaction; denied requests are logged at the authorization stage. Both approvals and denials retain the request, submitter and proof-based reason. This diagram groups internal operations for presentation and does not claim a literal production trace.'
 };
 const repeatedPaperwork = {...slides[1],items:slides[1].items.map(item=>[...item])};
 slides.splice(2,0,systemFlow,repeatedPaperwork,pilotTargets);
 
 for (const slide of slides) {
+ slide.title = slide.title.replace(/\bpapr\b/g,'Papr');
+ slide.notes = slide.notes.replace(/\bpapr\b/g,'Papr');
+ for (const item of slide.items) {
+  if (!['image','rect','ellipse'].includes(item[0])) item[0] = item[0].replace(/\bpapr\b/g,'Papr');
+ }
+ if (slide.citationNotes) for (const key of Object.keys(slide.citationNotes)) slide.citationNotes[key] = slide.citationNotes[key].replace(/\bpapr\b/g,'Papr');
  if (!slide.items.some(item => item[0] === 'image' && /papr-mark/.test(item[1]))) {
   slide.items.push(['image', slide.bg === N ? 'assets/papr-mark-white.svg' : 'assets/papr-mark.svg', 1120, 48, 84, 58.67]);
  }
@@ -212,7 +218,7 @@ export async function reviseBatch({presentation,input}){
   for(let j=0;j<d.items.length;j++){
    const a=d.items[j],name='s'+(i+1)+'-'+j;
    if(a[0]==='image'){
-    s.images.add({svg:await fs.readFile('C:/Users/willa/pbapo-uw/papr-pitch/'+a[1],'utf8'),name,position:{left:a[2],top:a[3],width:a[4],height:a[5]},fit:'contain',alt:'Original ITC Benguiat papr logo, vector outlines'});continue;
+    s.images.add({svg:await fs.readFile('C:/Users/willa/pbapo-uw/papr-pitch/'+a[1],'utf8'),name,position:{left:a[2],top:a[3],width:a[4],height:a[5]},fit:'contain',alt:'Original ITC Benguiat Papr logo, vector outlines'});continue;
    }
    if(['rect','ellipse'].includes(a[0])){
     s.shapes.add({name,geometry:a[0],position:{left:a[1],top:a[2],width:a[3],height:a[4]},fill:a[5],line:{fill:'none',width:0}});continue;
