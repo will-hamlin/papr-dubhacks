@@ -172,6 +172,8 @@ class OAuth:
             client = self.store.client(p.get('client_id', ''))
             if len(request.query_params.multi_items()) != len(p) or not client or p.get('redirect_uri') not in client['redirect_uris']:
                 return self.error('invalid_request', 'unknown client or unregistered redirect URI')
+            # This issuer serves one resource; omission never creates an unbound grant.
+            p.setdefault('resource', self.resource)
             if (p.get('response_type') != 'code' or p.get('code_challenge_method') != 'S256'
                     or not re.fullmatch(r'[A-Za-z0-9_-]{43}', p.get('code_challenge', ''))
                     or p.get('resource') != self.resource or p.get('scope', SCOPE) != SCOPE
@@ -326,6 +328,7 @@ class OAuth:
             kind = {'authorization_code': 'code', 'refresh_token': 'refresh'}.get(f.get('grant_type'))
             if not kind or f['grant_type'] not in client['grant_types']:
                 return self.error('unsupported_grant_type', 'unsupported grant type')
+            f.setdefault('resource', self.resource)
             if f.get('resource') != self.resource:
                 return self.error('invalid_target', 'resource must identify this MCP server')
             supplied = f.get('code' if kind == 'code' else 'refresh_token', '')

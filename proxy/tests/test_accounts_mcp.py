@@ -165,7 +165,7 @@ def test_owner_isolation_scoped_retries_and_restart(account_env):
         assert client.get('/orders/' + oid, headers=headers(two)).status_code == 404
 
 
-@pytest.mark.parametrize('bad', [{'code_challenge_method': 'plain'}, {'resource': 'https://other.example/mcp'},
+@pytest.mark.parametrize('bad', [{'code_challenge_method': 'plain'}, {'resource': ''}, {'resource': 'https://other.example/mcp'},
                                {'redirect_uri': 'https://evil.example'}, {'response_type': 'token'}, {'scope': 'admin'}])
 def test_authorization_validation(account_env, bad):
     response, _ = start_flow(account_env, **bad)
@@ -185,6 +185,49 @@ def test_pkce_code_expiry_replay_and_token_audience(account_env):
     params, verifier = code(e)
     e['now'][0] += timedelta(minutes=3)
     assert exchange(e, params['code'][0], verifier).status_code == 400
+
+
+@pytest.mark.parametrize('authorize_resource', [True, False])
+@pytest.mark.parametrize('token_resource', [True, False])
+def test_optional_resource_remains_bound_through_login_and_refresh(account_env, authorize_resource, token_resource):
+    e = account_env
+    resource = e['settings'].public_url + '/mcp'
+    verifier = 'v' * 64
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip('=')
+    params = {'client_id': e['client_id'], 'redirect_uri': REDIRECT, 'response_type': 'code',
+              'code_challenge': challenge, 'code_challenge_method': 'S256', 'scope': 'purchasing', 'state': 'muse'}
+    if authorize_resource:
+        params['resource'] = resource
+    page = e['client'].get('/authorize', params=params)
+    assert page.status_code == 200
+    consent = e['client'].post('/account/login', data={**fields(page), 'email': e['user']['email'],
+                               'password': PASSWORD, 'decision': 'allow'}, follow_redirects=False)
+    assert consent.status_code == 303
+    callback = parse_qs(urlsplit(consent.headers['location']).query)
+    assert callback['state'] == ['muse']
+    auth_code = callback['code'][0]
+    assert e['store'].get(auth_code, 'code')['resource'] == resource
+    data = {'grant_type': 'authorization_code', 'client_id': e['client_id'], 'code': auth_code,
+            'code_verifier': verifier, 'redirect_uri': REDIRECT}
+    if token_resource:
+        data['resource'] = resource
+    for invalid in ('', 'https://other.example/mcp'):
+        assert e['client'].post('/token', data={**data, 'resource': invalid}).status_code == 400
+    assert e['client'].post('/token', data={**data, 'code_verifier': 'x' * 64}).status_code == 400
+    response = e['client'].post('/token', data=data)
+    assert response.status_code == 200
+    tokens = response.json()
+    assert e['store'].get(tokens['access_token'], 'access')['resource'] == resource
+    assert e['store'].get(tokens['refresh_token'], 'refresh')['resource'] == resource
+    assert rpc(e, tokens, 'tools/list').status_code == 200
+    refresh = {'grant_type': 'refresh_token', 'client_id': e['client_id'], 'refresh_token': tokens['refresh_token']}
+    for invalid in ('', 'https://other.example/mcp'):
+        assert e['client'].post('/token', data={**refresh, 'resource': invalid}).status_code == 400
+    renewed = e['client'].post('/token', data=refresh)
+    assert renewed.status_code == 200
+    assert e['store'].get(renewed.json()['access_token'], 'access')['resource'] == resource
+    assert rpc(e, renewed.json(), 'tools/list').status_code == 200
+    assert rpc(e, tokens, 'tools/list').status_code == 401
 
 
 def test_refresh_rotation_replay_revokes_family(account_env):
