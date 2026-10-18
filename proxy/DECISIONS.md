@@ -1,0 +1,21 @@
+# Proxy / MS ownership decisions
+
+- Client connectors use the proxy's HTTP API or OAuth-protected MCP tools at `/mcp`.
+- Proxy and MS run on the same host as separate processes, with MS on loopback.
+- Proxy owns authentication, purchasing permission checks, raw-request policy gates, authorized ceilings, and signed handoffs.
+- MS owns product-spec extraction, unit conversion, constraint contradiction checks, preference weights, proof preparation, search/verifier integration, and result persistence.
+- Every new accepted or rejected request is delivered to MS. A rejection is documented without parser/search/verification work.
+- Personal-agent OAuth tokens resolve an operator-provisioned account; its company and user configurations are loaded server-side on every new request. Account request IDs and order access are scoped to their owner.
+- Caller-supplied profiles are accepted only by the explicitly enabled legacy demo connector. Signed enterprise requests use server-side users and policy.
+- Browser login uses Argon2id passwords and CSRF-protected consent. OAuth uses S256 PKCE, exact registered callbacks, resource-bound short-lived tokens and rotating refresh tokens. Company SSO federation is not implemented.
+- Connector dollar values become integer cents. The authorized ceiling is the lower of user limit and organization approval threshold.
+- Optional connector purchasingEnabled, blockedCategories, and blockedKeywords are enforced by the proxy. Remaining demo defaults come from data/.
+- Full profiles and request context are passed to MS; auth signatures and bearer credentials are omitted. Unauthenticated claims remain marked unverified.
+- Proxy authorization acceptance does not guarantee spec validity, available products, successful verification, or a purchase.
+- Accepted and denied handoffs are first stored in a durable local outbox. MS delivery failures do not turn an authorization denial into an acceptance or discard documentation.
+- The proxy's audit and purchase spend counters remain local authorization state; MS SQLite stores the request/decision and downstream results.
+- Dashboard/connector request IDs are deduplicated against the complete supplied user/company configuration and request text. Reusing an ID with changed context returns 409.
+- The MS endpoint deduplicates exact signed handoffs by order_id. Conflicting reuse returns 409.
+- MS queues accepted work durably before responding. One worker processes it; interrupted in-progress jobs are marked interrupted at restart rather than silently repeating an uncertain external operation.
+- Live search and SMT verification use the existing external agent-purchase-verifier integration, now owned by MS. An unconfigured backend remains explicitly not_searched.
+- Run one worker for each component. Existing daily/job spending counters do not reserve money for outstanding orders.
