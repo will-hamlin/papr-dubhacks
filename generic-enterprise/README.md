@@ -1,71 +1,105 @@
-# Generic enterprise demo
+# Generic enterprise demos
 
-A small, fictional employee purchasing dashboard. Everything for this demo lives in this folder. It uses plain HTML, CSS, browser JavaScript, and a dependency-free Node server.
+- **Employee purchasing dashboard:** see [DASHBOARD.md](DASHBOARD.md); run `npm start` in this folder and open http://127.0.0.1:3000.
+- **Purchasing authorization proxy:** setup and API documentation follow below.
 
-## Run
+The dashboard currently sends its own request/configuration envelope to an editable service URL. It is not yet wired to the proxy's signed-auth `/orders` contract.
 
-Requires Node.js 22 or newer. No dependency installation is needed.
+---
 
-```powershell
-cd generic-enterprise
-npm start
+# Acme Corp Purchasing proxy (DEMO COMPANY)
+
+A standalone service between the caller (demo website / agent) and the pbapo engine.
+For each order it decides:
+
+1. **Is the user authorized?** Signed auth, user exists, purchasing enabled, limits and caps not used up.
+2. **Does the order break company policy?** Blocked categories (weapons, medicine, age-restricted, gift cards), checked
+   on both the parsed spec and the raw text; sane quantity.
+
+Orders that fail get a failure notice with the reason. Orders that pass become **typed specs + integer weights +
+a priority order + spending limits**. These are signed and POSTed to the engine, and the engine's answer is returned
+to the caller. When the engine reports a completed
+purchase (`POST /purchases`), the spend counters move. Every call writes one entry to a hash-chained audit log.
+
+The proxy never holds payment credentials, never picks a product, and never lets request text raise a limit.
+
+```bash
+make dev                      # http://localhost:8000, stub engine, rule parser (no API key needed)
+make test                     # offline pytest suite
+make token USER_ID=u_jordan   # print a signed auth object for curl testing
+make reset                    # wipe var/ (spend counters, audit log)
 ```
 
-Open **http://127.0.0.1:3000**. Use `npm run dev` to restart the server automatically after server edits. Refresh the browser after frontend edits. Set `PORT` to change the local port.
+| Env var | Meaning |
+|---|---|
+| `PROXY_SHARED_SECRET` | HMAC key shared with the caller and the engine (`make dev` defaults to `dev-only-secret`) |
+| `ENGINE_URL`, `ENGINE_PATH` | Where to POST accepted orders (default path `/search`). Unset = stub engine |
+| `SPEC_PARSER` | `auto` (default: Claude if `ANTHROPIC_API_KEY` is set, else rules), `claude`, or `rules` |
+| `ANTHROPIC_API_KEY` | Enables the Claude spec parser (`claude-opus-5-5`) |
 
-## Demo flow
+## API
 
-1. Choose an employee and company in **Request details**.
-2. Click **Request order** and describe the purchase.
-3. Expand **Preview outgoing JSON** to inspect the exact request and selected configurations.
-4. Click **Send request**. The app sends an HTTP POST to `https://pbapo.me` by default.
-5. A successful HTTP response adds a receipt to **Recent requests**. Click **View** to inspect the payload and service response.
+`POST /orders`
+```json
+{"auth": {"user_id": "u_jordan", "issued_at": "...", "expires_at": "...", "sig": "<hex>"},
+ "request_text": "65W USB-C charger for my XPS 13"}
+```
+Build `auth` with `proxy/signing.py` → `make_auth(user_id, secret)` (stdlib only; copy it into the demo site).
 
-The hostname was provided without an API path or service schema. **Connection settings** lets you change the full URL (for example, to an eventual `/orders` route) and enter an optional bearer token. You can also set `ORDER_SERVICE_URL` before startup to change the initial default. A previously saved browser endpoint takes precedence. “Configured” means a URL is saved; it is not a live health check.
+| HTTP | `decision` | When |
+|---|---|---|
+| 200 | `accepted` | Passed; body has `specs`, `weights`, `priority`, `limits`, `notes`, `engine` |
+| 401 | `not_authorized` | Bad/expired auth signature, unknown user |
+| 403 | `not_authorized` | Purchasing disabled, $0 limit, daily/job cap already reached |
+| 403 | `violates_company_policy` | Blocked category or keyword, quantity out of range |
+| 422 | `unclear_request` | Not a purchase request, unreadable required value, contradictory constraints |
+| 400 | `bad_request` | Malformed body |
+| 502 / 503 | `engine_error` / `parser_error` | Engine or parser failed (fail closed) |
 
-The local server relays the request so the remote service does not need browser CORS configuration. It binds only to `127.0.0.1`. The relay is intended for a local demo, not deployment as a publicly accessible proxy.
+Every response has `ok`, `order_id`, `decision`, and `reason` when it failed.
 
-## Outgoing contract
+`POST /purchases`: the engine / payment gate reports a completed purchase so the spend counters move.
+```json
+{"order_id": "o_…", "total_cents": 40000, "proxy_sig": "<hex>"}
+```
+Sign it with `sign_payload({"order_id": …, "total_cents": …}, secret)` from `proxy/signing.py`. `total_cents` is the
+final integer total (items + tax + freight). It's added to today's company spend and to the order's job, so later
+orders get a smaller `limits.max_total_cents`.
 
-`Content-Type: application/json`, with `Authorization: Bearer <token>` only when supplied:
+| HTTP | `decision` | When |
+|---|---|---|
+| 200 | `recorded` | Spend updated |
+| 200 | `duplicate` | Same `order_id` and total already recorded; nothing changes |
+| 400 | `bad_request` | Body isn't exactly `order_id`, `total_cents`, `proxy_sig` |
+| 401 | `not_authorized` | Bad `proxy_sig` |
+| 404 | `unknown_order` | No accepted order with that `order_id` |
+| 409 | `over_limit` / `invalid_total` / `conflict` | Total above the order's `max_total_cents`, not a non-negative integer, or a different total for an already recorded order (flagged in the audit log) |
+
+`GET /audit`: all entries, plus `chain_valid`. `GET /health`: shows which parser and engine are active.
+
+## What the engine receives
 
 ```json
-{
-  "request": {
-    "id": "generated-uuid",
-    "createdAt": "2026-10-18T00:00:00.000Z",
-    "text": "We need 6 adjustable monitor arms, with a $900 budget."
-  },
-  "userConfig": {
-    "employeeId": "EMP-1042",
-    "name": "Alex Morgan"
-  },
-  "companyConfig": {
-    "companyId": "CO-001",
-    "name": "Northstar Industries"
-  }
-}
+{"order_id": "o_…", "issued_at": "…", "requester": {"user_id", "name", "job_number", "cost_code", "ship_to"},
+ "request_text": "…",
+ "specs": {"item": "laptop charger", "category": "computer_accessories", "quantity": 1, "condition": "unspecified",
+           "constraints": [{"field": "power", "op": "ge", "value": 65, "unit": "W", "required": true},
+                           {"field": "connector", "op": "eq", "value": "USB-C", "unit": null, "required": true}],
+           "english": ["power ≥ 65 W (required)", "connector = USB-C (required)"]},
+ "weights": {"compatibility": 40, "price": 30, "quality": 20, "delivery_speed": 10},
+ "priority": ["compatibility", "price", "quality", "delivery_speed"],
+ "limits": {"currency": "USD", "max_total_cents": 50000, "tax_rate_bp": 1025,
+            "freight_cents_by_supplier": {"sup_01": 0, "sup_03": 2500},
+            "approved_suppliers": ["sup_01", "sup_03"], "blocked_categories": ["weapons", "…"],
+            "total_formula": "…"},
+ "proxy_sig": "<hex>"}
 ```
+The engine verifies the payload with `verify_payload(payload, secret)` from `proxy/signing.py`. Numeric constraint
+values are integers in base units (mm, g, MB, W, mV, mAh, Hz, count). `op` is one of `eq ne ge le`. A field the
+request didn't mention is absent, which means **unknown**, not false or zero. `max_total_cents` covers items, tax
+and freight.
 
-The complete configuration objects are sent unchanged, including all custom fields. The example above abbreviates them. The endpoint and token are not included in the outgoing body. A retry keeps the same request ID while the form remains open; the receiver can use it for deduplication. The relay does not automatically retry. Any 2xx response counts as delivery; order approval remains the receiving service's responsibility. Errors leave the form intact. A timeout can mean delivery is uncertain, so check the receiver before retrying.
-
-## Configurations and persistence
-
-- Two company JSON files and four employee JSON files live under `configs/companies/` and `configs/users/`.
-- Northstar Industries has Alex Morgan (CEO) and Jamie Chen (intern). Meridian Labs has Sam Rivera (researcher) and Taylor Brooks (operations specialist).
-- Each employee's `companyId` links them to their company. Employee menus and the configuration list show only the selected company's employees.
-- Profile revision 2 replaces the original demo profiles on the next reload while preserving the saved service URL and request history. Later edits to the new profiles persist normally.
-- **Configurations** supports editing, creating, duplicating, and downloading employee or company JSON objects.
-- Browser changes are saved to localStorage, together with selected profiles, the service URL, a total sent count, and the latest 25 successful requests. They do not overwrite the seed files.
-- The bearer token stays in this tab's memory and is cleared on reload. Do not put secrets in the demo profiles or request text, which are stored locally.
-- To restore seed profiles, clear the `generic-enterprise-v1` localStorage key and reload. Seed file edits appear in new browser state.
-- The interface uses local system fonts and does not require an external font service.
-
-## Verify
-
-```powershell
-npm run check
-npm test
-```
-
-Tests use a temporary local receiving service, never `pbapo.me`. They verify complete JSON forwarding, optional authentication, successful receipts, upstream rejections, input validation, origin checks, and unreachable-service errors. The live service's route and schema still need to match the outgoing contract before an end-to-end live demo.
+## Layout
+`proxy/signing.py` HMAC auth + payload signing · `spec.py` Claude / rule spec parsers · `gates.py` authorization,
+policy, constraint compiler, weights · `service.py` pipeline · `engine.py` HTTP + stub engine ·
+`audit.py` hash chain · `store.py` users, policy, spend · `app.py` routes.

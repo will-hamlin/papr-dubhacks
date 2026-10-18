@@ -1,0 +1,39 @@
+[
+  {
+    "id": "u_jordan",
+    "name": "Jordan Lee",
+    "email": "jordan.lee@acme-demo.example",
+    "role": "field_tech",
+    "job_number": "J-1042",
+    "cost_code": "26-0500",
+    "spend_limit_cents": 50000,
+    "approver_id": "u_sam",
+    "purchasing_enabled": true,
+    "ship_to": "Acme Corp Job Site J-1042, 1200 Demo Ave, Seattle, WA 98101"
+  },
+  {
+    "id": "u_sam",
+    "name": "Sam Ortiz",
+    "email": "sam.ortiz@acme-demo.example",
+    "role": "project_manager",
+    "job_number": "J-1042",
+    "cost_code": "26-0100",
+    "spend_limit_cents": 500000,
+    "approver_id": null,
+    "approves_for": ["u_jordan", "u_riley"],
+    "purchasing_enabled": true,
+    "ship_to": "Acme Corp HQ, 400 Example St, Seattle, WA 98104"
+  },
+  {
+    "id": "u_riley",
+    "name": "Riley Chen",
+    "email": "riley.chen@acme-demo.example",
+    "role": "intern",
+    "job_number": "J-1042",
+    "cost_code": "26-0500",
+    "spend_limit_cents": 0,
+    "approver_id": "u_sam",
+    "purchasing_enabled": false,
+    "ship_to": "Acme Corp HQ, 400 Example St, Seattle, WA 98104"
+  }
+]
