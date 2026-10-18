@@ -44,7 +44,12 @@ export function createServer() {
       const pathname = new URL(request.url, 'http://localhost').pathname;
       if (request.method === 'GET' && pathname === '/api/profiles') {
         const [users, companies] = await Promise.all([loadProfiles('users'), loadProfiles('companies')]);
-        return json(response, 200, { users, companies, defaultEndpoint: process.env.ORDER_SERVICE_URL || 'https://pbapo.me' });
+        return json(response, 200, {
+          users,
+          companies,
+          defaultEndpoint: process.env.ORDER_SERVICE_URL || 'http://127.0.0.1:8000/orders',
+          defaultToken: process.env.ORDER_SERVICE_TOKEN || 'dev-only-token',
+        });
       }
 
       if (request.method === 'POST' && pathname === '/api/requests') {

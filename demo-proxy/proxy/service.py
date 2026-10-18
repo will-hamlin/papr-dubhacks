@@ -24,7 +24,7 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 from .audit import AuditLog
-from .engine import Engine, EngineError, HttpEngine, StubEngine
+from .engine import AgentV1Engine, Engine, EngineError, HttpEngine, StubEngine
 from .gates import authorize, build_search, check_policy
 from .models import DashboardOrder, OrderBody, User
 from .signing import AuthError, canonical_json, check_auth, sign_payload, verify_payload
@@ -43,6 +43,7 @@ class Settings:
     api_token: str = ""
     engine_url: str | None = None
     engine_path: str = "/search"
+    engine_kind: str = "auto"  # auto | http | agent_v1 | stub
     data_dir: Path = ROOT / "data"
     var_dir: Path = ROOT / "var"
 
@@ -51,7 +52,8 @@ class Settings:
         s = cls(shared_secret=os.environ.get("PROXY_SHARED_SECRET", ""),
                 api_token=os.environ.get("PROXY_API_TOKEN", ""),
                 engine_url=os.environ.get("ENGINE_URL") or None,
-                engine_path=os.environ.get("ENGINE_PATH", "/search"))
+                engine_path=os.environ.get("ENGINE_PATH", "/search"),
+                engine_kind=os.environ.get("ENGINE_KIND", "auto"))
         if os.environ.get("PROXY_VAR_DIR"):
             s.var_dir = Path(os.environ["PROXY_VAR_DIR"])
         return s
@@ -85,10 +87,8 @@ class Proxy:
         self.parser = parser or make_parser()
         if engine is not None:
             self.engine = engine
-        elif settings.engine_url:
-            self.engine = HttpEngine(settings.engine_url, settings.engine_path)
         else:
-            self.engine = StubEngine()
+            self.engine = self._make_engine(settings)
         # Rebuilt from the audit log so a restart remembers accepted orders, recorded purchases and
         # dashboard request ids.
         self.accepted: dict[str, dict] = {}   # order_id -> {max_total_cents, job_number, company_caps}
@@ -102,6 +102,21 @@ class Proxy:
                 self.purchased[e["order_id"]] = e["total_cents"]
             if e.get("response") and e.get("request_id"):
                 self.requests[e["request_id"]] = {"fingerprint": e["request_fingerprint"], **e["response"]}
+
+    @staticmethod
+    def _make_engine(settings: Settings) -> Engine:
+        kind = (settings.engine_kind or "auto").lower()
+        url = settings.engine_url
+        if kind == "stub" or (kind == "auto" and not url):
+            return StubEngine()
+        if not url:
+            raise RuntimeError("ENGINE_URL is required when ENGINE_KIND is http or agent_v1")
+        if kind == "agent_v1" or (kind == "auto" and (
+                settings.engine_path.startswith("/v1") or os.environ.get("VP_AGENT_KEY"))):
+            return AgentV1Engine(url)
+        if kind == "auto" and url.rstrip("/").endswith(":8001"):
+            return AgentV1Engine(url)
+        return HttpEngine(url, settings.engine_path)
 
     def _remember_order(self, order_id: str, record: dict) -> None:
         self.accepted[order_id] = {"max_total_cents": record["max_total_cents"],

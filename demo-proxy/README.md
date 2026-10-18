@@ -29,8 +29,24 @@ make reset                    # wipe var/ (spend counters, audit log)
 | `PROXY_API_TOKEN` | Bearer token the employee dashboard sends (`make dev` defaults to `dev-only-token`); unset = dashboard requests refused |
 | `PROXY_SHARED_SECRET` | HMAC key shared with the caller and the engine (`make dev` defaults to `dev-only-secret`) |
 | `ENGINE_URL`, `ENGINE_PATH` | Where to POST accepted orders (default path `/search`). Unset = stub engine |
+| `ENGINE_KIND` | `auto` (default), `http`, `agent_v1`, or `stub`. Use `agent_v1` for agent-purchase-verifier |
+| `VP_AGENT_KEY` | Bearer key for `ENGINE_KIND=agent_v1` (must match verifier `VP_AGENT_KEY`) |
+| `VP_PROXY_MODE` | `supervised` \| `purchase_only` \| `autonomous` — forwarded as the request mode |
 | `SPEC_PARSER` | `auto` (default: Claude if `ANTHROPIC_API_KEY` is set, else rules), `claude`, or `rules` |
 | `ANTHROPIC_API_KEY` | Enables the Claude spec parser (`claude-opus-5-5`) |
+
+### Linked to agent-purchase-verifier
+
+```bash
+# terminal A — verifier on :8001 (Claude web search when `claude` is installed)
+cd ../agent-purchase-verifier && .venv/bin/python scripts/run_pbapo.py
+
+# terminal B — this proxy
+make dev-linked   # ENGINE_URL=http://127.0.0.1:8001 ENGINE_KIND=agent_v1
+```
+
+Accepted orders call `POST /v1/proxy/search` with the signed payload. The response `engine` object
+includes `approval_url` — open it in the verifier UI to approve H1/H2 (agents never approve).
 
 ## API
 

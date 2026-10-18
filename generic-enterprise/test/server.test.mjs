@@ -54,7 +54,8 @@ test('dashboard provides two companies with their two requested employee roles',
   const rolesFor = companyId => profiles.users.filter(user => user.config.companyId === companyId).map(user => user.config.role).sort();
   assert.deepEqual(rolesFor('CO-001'), ['CEO', 'Intern']);
   assert.deepEqual(rolesFor('CO-003'), ['Operations specialist', 'Researcher']);
-  assert.equal(profiles.defaultEndpoint, process.env.ORDER_SERVICE_URL || 'https://pbapo.me');
+  assert.equal(profiles.defaultEndpoint, process.env.ORDER_SERVICE_URL || 'http://127.0.0.1:8000/orders');
+  assert.equal(profiles.defaultToken, process.env.ORDER_SERVICE_TOKEN || 'dev-only-token');
 });
 
 test('relay preserves the full payload and forwards the optional bearer token', async () => {

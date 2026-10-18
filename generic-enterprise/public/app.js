@@ -358,7 +358,10 @@ function renderHistory() {
     const view = textElement('button', 'View ↗', 'text-button');
     view.setAttribute('aria-label', `View request ${record.payload.request.id.slice(0, 8)}`);
     view.addEventListener('click', () => {
-      $('#receipt-description').textContent = `Delivered to ${record.endpoint} · HTTP ${record.status}. Delivery does not mean the order has been approved.`;
+      const approval = approvalUrlFrom(record.response);
+      $('#receipt-description').textContent = approval
+        ? `Delivered to ${record.endpoint} · HTTP ${record.status}. Approve the verified purchase here: ${approval}`
+        : `Delivered to ${record.endpoint} · HTTP ${record.status}. Delivery does not mean the order has been approved.`;
       $('#receipt-payload').textContent = JSON.stringify(record.payload, null, 2);
       $('#receipt-response').textContent = record.response || '(Empty response)';
       $('#details-dialog').showModal();
@@ -440,6 +443,16 @@ function openRequest() {
   updatePreview();
   $('#request-dialog').showModal();
   $('#request-text').focus();
+}
+
+function approvalUrlFrom(responseText) {
+  if (typeof responseText !== 'string' || !responseText.trim()) return null;
+  try {
+    const body = JSON.parse(responseText);
+    return body?.engine?.approval_url || body?.approval_url || null;
+  } catch {
+    return null;
+  }
 }
 
 function openConnection() {
@@ -574,7 +587,7 @@ $('#request-form').addEventListener('submit', async event => {
   try {
     const response = await fetch('/api/requests', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ endpoint, token, payload }), signal: AbortSignal.timeout(25000),
+      body: JSON.stringify({ endpoint, token, payload }), signal: AbortSignal.timeout(120000),
     });
     const result = await response.json();
     if (!response.ok || !result.accepted) {
@@ -586,7 +599,8 @@ $('#request-form').addEventListener('submit', async event => {
     persist();
     renderHistory();
     $('#request-dialog').close();
-    notify('Request sent to the order service.');
+    const approval = approvalUrlFrom(result.response);
+    notify(approval ? `Request accepted — approve in the verifier: ${approval}` : 'Request sent to the order service.');
   } catch (error) {
     feedback('#request-feedback', error.name === 'TimeoutError' || error instanceof TypeError
       ? 'Delivery could not be confirmed. The service may have received this request; check before retrying.'
@@ -616,6 +630,7 @@ async function initialize() {
       sentCount: Number.isSafeInteger(saved?.sentCount) && saved.sentCount >= 0 ? saved.sentCount : undefined,
       completedTasks: saved?.completedTasks && typeof saved.completedTasks === 'object' && !Array.isArray(saved.completedTasks) ? saved.completedTasks : {},
     };
+    if (!token && typeof seeds.defaultToken === 'string') token = seeds.defaultToken;
     state.active = {};
     for (const kind of ['users', 'companies']) {
       const defaultId = kind === 'companies' && state.companies.some(item => item.id === 'northstar') ? 'northstar' : state[kind][0].id;

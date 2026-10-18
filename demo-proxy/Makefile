@@ -8,7 +8,13 @@ export PROXY_SHARED_SECRET ?= dev-only-secret
 export PROXY_API_TOKEN ?= dev-only-token
 USER_ID ?= u_jordan
 
-.PHONY: dev test install token reset clean
+# Linked stack: agent-purchase-verifier on :8001 (scripts/run_pbapo.py).
+export ENGINE_URL ?=
+export ENGINE_KIND ?= auto
+export VP_AGENT_KEY ?= vpk_pbapo_dev_only
+export VP_PROXY_MODE ?= supervised
+
+.PHONY: dev dev-linked test install token reset clean
 
 $(BIN)/uvicorn: requirements.txt
 	$(PY) -m venv $(VENV)
@@ -19,6 +25,12 @@ install: $(BIN)/uvicorn
 
 # Stub engine unless ENGINE_URL is set; rule parser unless an Anthropic credential is set (see SPEC_PARSER).
 dev: install
+	$(BIN)/uvicorn --factory proxy.app:create_app --reload --port $(PORT)
+
+# Forward accepted orders to the verified-purchase Agent API bridge on :8001.
+dev-linked: install
+	ENGINE_URL=http://127.0.0.1:8001 ENGINE_KIND=agent_v1 \
+	VP_AGENT_KEY=$(VP_AGENT_KEY) VP_PROXY_MODE=$(VP_PROXY_MODE) \
 	$(BIN)/uvicorn --factory proxy.app:create_app --reload --port $(PORT)
 
 test: install
