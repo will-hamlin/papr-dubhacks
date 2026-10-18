@@ -9,5 +9,10 @@
     "test": "node --test test/*.test.mjs",
     "check": "node --check server.mjs && node --check public/app.js"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
 }
