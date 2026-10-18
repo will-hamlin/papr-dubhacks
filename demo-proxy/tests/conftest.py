@@ -1,5 +1,6 @@
 import json
 import shutil
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -14,6 +15,18 @@ from proxy.spec import RuleSpecParser
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 SECRET = "test-secret"
+TOKEN = "test-token"
+
+# Shaped like generic-enterprise/configs (the employee dashboard's seed profiles).
+NORTHSTAR = {"companyId": "CO-001", "name": "Northstar Industries", "industry": "Business services",
+             "currency": "USD", "billingAddress": "120 Market Street, Seattle, WA 98101",
+             "purchaseOrderPrefix": "NS",
+             "purchasePolicy": {"approvalRequiredAbove": 5000, "preferredVendors": ["Staples", "Dell", "Grainger"],
+                                "paymentTerms": "Net 30"}}
+ALEX = {"employeeId": "EMP-1042", "companyId": "CO-001", "name": "Alex Morgan", "email": "alex.morgan@northstar.example",
+        "department": "Executive", "role": "CEO", "costCenter": "EXEC-100", "approvalLimit": 50000, "currency": "USD"}
+JAMIE = {**ALEX, "employeeId": "EMP-1088", "name": "Jamie Chen", "role": "Intern", "costCenter": "OPS-100",
+         "approvalLimit": 0}
 
 
 class Clock:
@@ -36,7 +49,7 @@ class Env:
             p.update(policy)
             (self.data / "company_policy.json").write_text(json.dumps(p))
         self.clock = Clock()
-        self.settings = Settings(shared_secret=SECRET, data_dir=self.data, var_dir=tmp_path / "var")
+        self.settings = Settings(shared_secret=SECRET, api_token=TOKEN, data_dir=self.data, var_dir=tmp_path / "var")
         self.engine = engine or StubEngine()
         self.app = create_app(self.settings, parser=parser or RuleSpecParser(), engine=self.engine,
                               clock=self.clock)
@@ -48,6 +61,13 @@ class Env:
 
     def order(self, text, user_id="u_jordan", auth=None):
         r = self.client.post("/orders", json={"auth": auth or self.auth(user_id), "request_text": text})
+        return r.status_code, r.json()
+
+    def dashboard(self, text, user=None, company=None, request_id=None, token=TOKEN):
+        body = {"request": {"id": request_id or str(uuid.uuid4()), "createdAt": self.clock().isoformat(), "text": text},
+                "userConfig": user or ALEX, "companyConfig": company or NORTHSTAR}
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        r = self.client.post("/orders", json=body, headers=headers)
         return r.status_code, r.json()
 
     def purchase(self, order_id, total_cents, secret=SECRET):

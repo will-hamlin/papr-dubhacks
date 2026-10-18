@@ -4,6 +4,8 @@ BIN := $(VENV)/bin
 PORT ?= 8000
 # Local-only default. Set a real PROXY_SHARED_SECRET (shared with the demo site and engine) anywhere else.
 export PROXY_SHARED_SECRET ?= dev-only-secret
+# Bearer token the employee dashboard sends (paste it into the dashboard's Connection settings).
+export PROXY_API_TOKEN ?= dev-only-token
 USER_ID ?= u_jordan
 
 .PHONY: dev test install token reset clean

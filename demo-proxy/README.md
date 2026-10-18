@@ -26,6 +26,7 @@ make reset                    # wipe var/ (spend counters, audit log)
 
 | Env var | Meaning |
 |---|---|
+| `PROXY_API_TOKEN` | Bearer token the employee dashboard sends (`make dev` defaults to `dev-only-token`); unset = dashboard requests refused |
 | `PROXY_SHARED_SECRET` | HMAC key shared with the caller and the engine (`make dev` defaults to `dev-only-secret`) |
 | `ENGINE_URL`, `ENGINE_PATH` | Where to POST accepted orders (default path `/search`). Unset = stub engine |
 | `SPEC_PARSER` | `auto` (default: Claude if `ANTHROPIC_API_KEY` is set, else rules), `claude`, or `rules` |
@@ -51,6 +52,19 @@ Build `auth` with `proxy/signing.py` → `make_auth(user_id, secret)` (stdlib on
 | 502 / 503 | `engine_error` / `parser_error` | Engine or parser failed (fail closed) |
 
 Every response has `ok`, `order_id`, `decision`, and `reason` when it failed.
+
+**From the employee dashboard** (`generic-enterprise/`): `POST /orders` also accepts the dashboard's own body,
+unchanged, with `Authorization: Bearer <PROXY_API_TOKEN>`:
+```json
+{"request": {"id": "uuid", "createdAt": "…", "text": "65W USB-C charger"},
+ "userConfig": {"employeeId": "EMP-1042", "companyId": "CO-001", "name": "Alex Morgan", "approvalLimit": 50000, …},
+ "companyConfig": {"companyId": "CO-001", "name": "Northstar Industries",
+                   "purchasePolicy": {"approvalRequiredAbove": 5000, "preferredVendors": ["Dell"]}, …}}
+```
+The order cap is `approvalLimit` (whole dollars), lowered to `approvalRequiredAbove`; Acme's daily and job caps don't
+apply. A retry with the same `request.id` gets the first answer back with `"duplicate": true`. To connect the
+dashboard: `make dev` here, then in the dashboard's **Connection settings** set the URL to
+`http://127.0.0.1:8000/orders` and the token to `dev-only-token`. Details are in DECISIONS.md.
 
 `POST /purchases`: the engine / payment gate reports a completed purchase so the spend counters move.
 ```json
