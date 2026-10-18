@@ -1,4 +1,4 @@
-# pbapo-uw
+# papr
 
 dubhacks '26 · Proof Based Agentic Purchase Orders
 
