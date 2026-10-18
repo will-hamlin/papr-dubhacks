@@ -1,0 +1,11 @@
+{
+  "employeeId": "EMP-1042",
+  "companyId": "CO-001",
+  "name": "Alex Morgan",
+  "email": "alex.morgan@northstar.example",
+  "department": "Executive",
+  "role": "CEO",
+  "costCenter": "EXEC-100",
+  "approvalLimit": 50000,
+  "currency": "USD"
+}

@@ -1,0 +1,11 @@
+{
+  "employeeId": "EMP-1190",
+  "companyId": "CO-003",
+  "name": "Taylor Brooks",
+  "email": "taylor.brooks@meridian.example",
+  "department": "Operations",
+  "role": "Operations specialist",
+  "costCenter": "OPS-300",
+  "approvalLimit": 5000,
+  "currency": "USD"
+}

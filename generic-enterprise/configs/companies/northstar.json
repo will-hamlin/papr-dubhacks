@@ -1,0 +1,13 @@
+{
+  "companyId": "CO-001",
+  "name": "Northstar Industries",
+  "industry": "Business services",
+  "currency": "USD",
+  "billingAddress": "120 Market Street, Seattle, WA 98101",
+  "purchaseOrderPrefix": "NS",
+  "purchasePolicy": {
+    "approvalRequiredAbove": 5000,
+    "preferredVendors": ["Staples", "Dell", "Grainger"],
+    "paymentTerms": "Net 30"
+  }
+}

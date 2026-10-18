@@ -1,0 +1,13 @@
+{
+  "companyId": "CO-003",
+  "name": "Meridian Labs",
+  "industry": "Research and development",
+  "currency": "USD",
+  "billingAddress": "400 Innovation Drive, Boulder, CO 80301",
+  "purchaseOrderPrefix": "ML",
+  "purchasePolicy": {
+    "approvalRequiredAbove": 10000,
+    "preferredVendors": ["Fisher Scientific", "Dell"],
+    "paymentTerms": "Net 45"
+  }
+}
