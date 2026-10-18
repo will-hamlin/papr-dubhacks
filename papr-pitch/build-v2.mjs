@@ -86,7 +86,7 @@ export const slides=[
  ['Respondents qualifying\nas AI high performers',890,327,320,64,26],
  ['≥5% EBIT impact + significant value',890,390,320,25,17,'Bahnschrift'],
  ['rect',0,442,1280,278,B],
- ['NEXT EXPANSION STEPS / PROPOSED',82,464,1110,28,18,'Bahnschrift'],
+ ['NEXT EXPANSION STEPS',82,464,1110,28,18,'Bahnschrift'],
  ['01 / Win finance teams',82,512,340,42,29],
  ['Start with routine IT purchases.\nSell faster approvals and\ntraceable decisions.',82,567,340,85,23,'Bahnschrift'],
  ['rect',454,512,1,180,'#8FABCA'],
@@ -171,7 +171,33 @@ pilotTargets.items.push(['Projected figures based on preliminary estimates',82,6
 pilotTargets.metricFrom['Projected figures based on preliminary estimates'] = ['',18];
 pilotTargets.plainMetrics = ['Projected figures based on preliminary estimates'];
 pilotTargets.notes += ' Citation provenance: ' + Object.entries(pilotTargets.citationNotes).map(([label,note])=>label+' '+note).join(' ');
-slides.splice(2,0,pilotTargets);
+const systemFlow = {
+ bg:W, title:'How papr works',
+ items:[
+  ['How papr works',76,63,1030,90,64],
+  ['rect',76,205,1124,48,N],
+  ['Company + user rules guide authorization and verification',100,217,1076,28,21,'Bahnschrift',W],
+  ['rect',76,292,248,232,B],
+  ['1 / Request',96,315,208,40,28],
+  ['Natural language:\n“Laptop under $1,200,\n16 GB, ideally light.”',96,383,208,105,21,'Bahnschrift'],
+  ['→',330,382,38,55,36],
+  ['rect',368,292,248,232,B],
+  ['2 / Encode specs',388,315,208,40,28],
+  ['Must: ≤ $1,200\nRAM ≥ 16 GB\nPrefer: low weight',388,383,208,105,21,'Bahnschrift'],
+  ['→',622,382,38,55,36],
+  ['rect',660,292,248,232,B],
+  ['3 / Find + verify',680,315,208,40,28],
+  ['Search products.\nVerify requirements.\nRank preferences.',680,383,208,105,21,'Bahnschrift'],
+  ['→',914,382,38,55,36],
+  ['rect',952,292,248,232,B],
+  ['4 / Decide + log',972,315,208,40,28],
+  ['Approve or deny.\nSave the request,\nsubmitter and reason.',972,383,208,105,21,'Bahnschrift'],
+  ['Required specs determine eligibility. Preferences rank the eligible matches.',82,581,1118,40,25]
+ ],
+ notes:'Simplified overview with an illustrative laptop request: the user submits natural language plus company and user configuration. Authorization is checked before product search. papr translates the request into explicit required specifications and preferences: the example requires a price at most USD 1,200 and at least 16 GB RAM, while low weight is a preference. The agent searches for candidates and verifies encoded requirements against supplied evidence, ranking eligible discovered candidates by preferences. A formal check establishes consistency with the encoded conditions, not independent truth of vendor claims. Ambiguous specs require clarification. Failed authorization or unmet requirements can yield a denial without completing every stage shown. Both approvals and denials retain the request, submitter and proof-based reason. This diagram groups internal operations for presentation and does not claim a literal production trace.'
+};
+const repeatedPaperwork = {...slides[1],items:slides[1].items.map(item=>[...item])};
+slides.splice(2,0,systemFlow,repeatedPaperwork,pilotTargets);
 
 for (const slide of slides) {
  if (!slide.items.some(item => item[0] === 'image' && /papr-mark/.test(item[1]))) {

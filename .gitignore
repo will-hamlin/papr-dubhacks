@@ -6,3 +6,4 @@ __pycache__/
 !.env.example
 !.env.production.example
 secrets/
+papr-pitch/.pptx-build/

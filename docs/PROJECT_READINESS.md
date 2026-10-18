@@ -1,6 +1,32 @@
 # PAPR project readiness
 
-## Demo scope update
+## Integrated verifier demo — 18 October 2026
+
+The local demo now includes the pinned Agent Purchase Verifier Z3 core. Managed
+and personal-agent listings receive proofs against PAPR's exact compiled requirements
+and policy, with snapshot/contract bindings and replayable solver queries. The UI
+shows proven/rejected/unresolved counts, condition-level evidence and exportable
+receipts. Fictional source data is visibly labeled; the solver checks are real.
+
+`python scripts/run_demo.py` starts an isolated three-process demo at port 3100,
+with proxy 8200 and MS 8201. It defaults to deterministic parsing without paid
+services. `--smoke` exercises both request paths over real HTTP and shuts down.
+The existing preview and pitch artifacts are independent of this stack.
+
+This completes the local solver integration, not the separate backend's account,
+approval or payment integration. Live search, general semantic product matching,
+supplier truth, live finance and purchasing remain outside demo acceptance.
+See [VERIFIER_INTEGRATION.md](VERIFIER_INTEGRATION.md) for the exact proof scope
+and external integration gaps. The earlier assessment below is historical context.
+
+Verification on this branch: 215 Python tests and 30 JavaScript tests passed,
+along with JavaScript syntax checks. Real HTTP smoke tests passed for managed
+charger/laptop requests and an agent candidate batch. Browser checks covered
+desktop and a 390px viewport, reload persistence, and proof export with no console
+errors. The downloaded receipt's three hashes and six SMT queries were replayed.
+The official MCP/OAuth integration test also asserts a requirements-bound proof.
+
+## Previous demo scope (before solver integration)
 
 The current target is a local demo, not a live deployment. See [DEMO.md](DEMO.md) for the walkthrough.
 The supplied Claude credential has passed a minimal inference call and a real structured laptop/RAM parse;

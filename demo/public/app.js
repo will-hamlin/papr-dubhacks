@@ -13,11 +13,94 @@ const refreshingRequests = new Set();
 const terminalStates = new Set(['completed', 'verification_complete', 'failed', 'rejected', 'not_searched', 'interrupted']);
 
 function requestStatus(record) {
+  const engine = record.progress?.result?.engine;
+  if (record.progress?.status === 'submitted' && (engine?.approval_url || engine?.status === 'escalated')) return 'Review needed';
   const labels = { delivery_pending: 'Pending delivery', queued: 'Queued', processing: 'Processing', submitted: 'Searching',
     awaiting_candidates: 'Awaiting listings', candidates_queued: 'Verifying listings', verification_complete: 'Evidence reviewed',
     completed: 'Processing complete', failed: 'Failed', rejected: 'Denied', not_searched: 'Search not configured', interrupted: 'Interrupted' };
   if (record.order?.ok === false) return 'Denied';
   return labels[record.progress?.status] || (record.progress?.status ? 'Processing' : 'Submitted');
+}
+
+function proofStatus(candidate) {
+  const status = candidate.formal_proof?.status;
+  return ['proven', 'rejected', 'unknown', 'vacuous', 'inconsistent_requirements'].includes(status) ? status : 'unknown';
+}
+
+function safeReviewUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.username || url.password) return null;
+    if (url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) return url.href;
+  } catch { /* An incomplete backend response may omit its review URL. */ }
+  return null;
+}
+
+function renderVerificationOverview(content, result, candidates) {
+  if (result?.specs) {
+    const requirements = document.createElement('section'); requirements.className = 'requirements-card';
+    requirements.append(textElement('div', 'REQUEST REQUIREMENTS', 'panel-kicker'));
+    requirements.append(textElement('h3', result.specs.item || 'Purchase request'));
+    const details = [`Quantity ${result.specs.quantity || 1}`];
+    if (Number.isFinite(result.limits?.max_total_cents)) details.push(`Total limit ${evidenceValue(result.limits.max_total_cents, null, 'max_total_cents')}`);
+    if (result.specs.condition && result.specs.condition !== 'unspecified') details.push(result.specs.condition);
+    requirements.append(textElement('p', details.join(' · ')));
+    const list = document.createElement('ul'); list.className = 'requirement-tags';
+    for (const condition of result.specs.english || []) list.append(textElement('li', condition));
+    requirements.append(list);
+    content.append(requirements);
+  }
+  const engine = result?.engine;
+  if (engine?.approval_url || engine?.status === 'escalated' || engine?.status === 'needs_info') {
+    const review = document.createElement('section'); review.className = 'review-needed';
+    review.append(textElement('h3', 'The search service needs your review'));
+    review.append(textElement('p', 'Resolve the open questions in the verifier, then return here for PAPR’s evidence and policy checks.'));
+    for (const question of engine.questions || []) {
+      if (typeof question.text === 'string') review.append(textElement('p', question.text));
+    }
+    const url = safeReviewUrl(engine.approval_url);
+    if (url) {
+      const link = textElement('a', 'Open verifier review ↗', 'button secondary');
+      link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer'; review.append(link);
+    }
+    content.append(review);
+  }
+  if (!candidates.length) return;
+  const proofCount = candidates.filter(c => proofStatus(c) === 'proven').length;
+  const rejected = candidates.filter(c => ['rejected', 'vacuous', 'inconsistent_requirements'].includes(proofStatus(c))).length;
+  const overview = document.createElement('section'); overview.className = 'proof-overview';
+  overview.setAttribute('aria-label', 'Verification results');
+  for (const [number, label, kind] of [[proofCount, 'Proven', 'proven'], [rejected, 'Not satisfied', 'rejected'],
+    [candidates.length - proofCount - rejected, 'Unresolved', 'unknown']]) {
+    const metric = document.createElement('div'); metric.className = `proof-metric ${kind}`;
+    metric.append(textElement('strong', String(number)), textElement('span', label)); overview.append(metric);
+  }
+  content.append(overview);
+  content.append(textElement('p', 'Formal proofs use the published evidence and your compiled conditions. They do not certify the seller’s claims or approve a purchase.', 'verification-note'));
+}
+
+function renderProof(card, candidate) {
+  const proof = candidate.formal_proof;
+  const status = proofStatus(candidate);
+  const labels = { proven: 'Requirements proven', rejected: 'Requirements not met', unknown: 'Evidence incomplete',
+    vacuous: 'Conflicting evidence', inconsistent_requirements: 'Requirements conflict' };
+  const badge = textElement('span', labels[status], `proof-badge ${status}`);
+  card.prepend(badge);
+  if (!proof) {
+    card.append(textElement('p', 'No formal proof is available for this result.', 'verification-note'));
+    return;
+  }
+  card.append(textElement('p', proof.reason || 'Review the evidence below.', 'proof-reason'));
+  if (proof.missing_fields?.length) card.append(textElement('p', `Missing evidence: ${proof.missing_fields.map(evidenceField).join(', ')}.`, 'verification-note'));
+  const details = document.createElement('details'); details.className = 'proof-details';
+  details.append(textElement('summary', 'Proof & source record'));
+  details.append(textElement('p', `${proof.engine || 'Z3'} · ${candidate.simulated ? 'Fictional source data, real solver checks' : 'Published supplier evidence'}`, 'verification-note'));
+  if (candidate.evidence?.retrieved_at) details.append(textElement('p', `Source checked ${new Date(candidate.evidence.retrieved_at).toLocaleString()}`, 'evidence-source'));
+  for (const [label, hash] of [['Requirements', proof.requirements_id], ['Source snapshot', proof.evidence_sha256], ['Proof receipt', proof.receipt_hash]]) {
+    if (hash) details.append(textElement('p', `${label}: ${hash}`, 'evidence-source'));
+  }
+  if (proof.assumptions?.length) details.append(textElement('p', `Assumptions: ${proof.assumptions.join('; ')}.`, 'verification-note'));
+  card.append(details);
 }
 
 function evidenceField(field) {
@@ -69,6 +152,7 @@ function showReceipt(record, open = false) {
   const verification = result?.verification;
   if (verification?.reason) content.append(textElement('p', String(verification.reason), 'verification-note'));
   const candidates = Array.isArray(verification?.candidates) ? verification.candidates : [];
+  renderVerificationOverview(content, result, candidates);
   for (const candidate of candidates) {
     const card = document.createElement('section'); card.className = 'candidate-review';
     const sku = candidate.facts?.sku?.value || candidate.sku;
@@ -80,9 +164,14 @@ function showReceipt(record, open = false) {
     card.append(textElement('p', `Claims: ${candidate.claims_status || 'unverified'} · Requirements: ${candidate.requirements_status || 'unverified'}`, 'candidate-outcome'));
     if (candidate.reason) card.append(textElement('p', String(candidate.reason), 'verification-note'));
     if (candidate.url) card.append(textElement('p', String(candidate.url), 'evidence-source'));
+    renderProof(card, candidate);
+    const checkDetails = document.createElement('details'); checkDetails.className = 'check-details';
+    const failures = (candidate.requirement_checks || []).filter(check => check.status === 'contradicted');
+    if (failures.length) card.append(textElement('p', `Does not meet: ${failures.map(check => evidenceField(check.field)).join(', ')}.`, 'failed-conditions'));
+    checkDetails.append(textElement('summary', 'Inspect claims and required conditions'));
     for (const [label, checks] of [['Claim checks', candidate.claim_checks], ['Required conditions', candidate.requirement_checks]]) {
       if (!Array.isArray(checks) || !checks.length) continue;
-      card.append(textElement('h4', label));
+      checkDetails.append(textElement('h4', label));
       const list = document.createElement('ul');
       for (const check of checks) {
         const line = document.createElement('li');
@@ -97,14 +186,16 @@ function showReceipt(record, open = false) {
         line.append(textElement('span', parts.join(' · ')));
         list.append(line);
       }
-      card.append(list);
+      checkDetails.append(list);
     }
+    card.append(checkDetails);
     content.append(card);
   }
-  if (!content.children.length) content.append(textElement('p', progress?.status === 'awaiting_candidates'
+  if (!candidates.length && !verification?.reason && !reason) content.append(textElement('p', progress?.status === 'awaiting_candidates'
     ? 'The main service prepared the conditions and is waiting for product listings from the agent.'
     : 'No listing evidence is available yet. Review the latest service response below for details.', 'verification-note'));
   if (open) $('#details-dialog').showModal();
+  $('#download-proof').disabled = !verification;
 }
 
 async function refreshRequest(record, force = false) {
@@ -627,6 +718,21 @@ $('#account-form').addEventListener('submit', event => {
 });
 $('#request-order').addEventListener('click', openRequest);
 $('#refresh-request').addEventListener('click', () => { if (displayedRecord) refreshRequest(displayedRecord, true); });
+$('#download-proof').addEventListener('click', () => {
+  const result = displayedRecord?.progress?.result;
+  if (!result?.verification) return;
+  const receipt = { order_id: displayedRecord.order?.order_id, request_text: displayedRecord.payload?.request?.text,
+    requirements_id: result.requirements_id, specs: result.specs, limits: result.limits,
+    verification: result.verification, purchase_authorized: false };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(receipt, null, 2)], { type: 'application/json' }));
+  const link = document.createElement('a'); link.href = url;
+  link.download = `papr-proof-${String(receipt.order_id || 'receipt').replace(/[^a-zA-Z0-9_-]/g, '_')}.json`;
+  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+document.querySelectorAll('[data-example-request]').forEach(button => button.addEventListener('click', () => {
+  $('#request-text').value = button.dataset.exampleRequest;
+  updatePreview(); $('#request-text').focus();
+}));
 $('#request-settings').addEventListener('click', openConnection);
 $('#request-text').addEventListener('input', updatePreview);
 

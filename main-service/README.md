@@ -46,10 +46,11 @@ See [CONFIGURATION.md](../CONFIGURATION.md) for private settings generation, pro
 and startup commands. `PAPR_ENV=production` requires explicit live parsing/backend configuration and disables
 silent parser degradation. A passing preflight does not validate remote credentials or formal proofs.
 
-The live web-search and SMT solver implementation is still in the separate
+The full live-search application remains in the separate
 [agent-purchase-verifier](https://github.com/mtptru/agent-purchase-verifier) repository.
-This refactor relocates the existing preparation logic and backend integration into MS; it does not copy that
-external code or implement a replacement solver. MS now owns the invocation, monitoring, and database output.
+MS now includes its pinned typed compiler and Z3 solver core, adapted to the exact PAPR compiled
+requirements and policy. Both agent and managed candidates receive local proofs. External proof flags
+are never accepted as local evidence. See [integration details](../docs/VERIFIER_INTEGRATION.md).
 
 See the [root README](../README.md) for PowerShell startup. Use one MS worker on port 8001; the external
 backend must use a different port. On Unix, `make dev` runs MS with the offline stub, and `make dev-linked`
@@ -93,9 +94,15 @@ Supplier identity comes only from `MS_SUPPLIER_HOSTS`, never an agent's supplier
 cannot satisfy the approved-supplier or freight checks. Totals use quantity, policy tax, and policy freight;
 they are not live checkout quotes. Evidence checks establish what a supplier publishes, not independent
 manufacturer certification, semantic suitability of every product, or real-world truth. The persisted external
-solver report remains separate; this evidence checker does not implement a replacement SMT solver.
+solver report remains separate from the local, requirements-bound `formal_proof` on each candidate.
 Use `result.verification` for these claim checks rather than a backend's status label. `verification_complete`
 means checks finished, not that every claim passed. Every report sets `purchase_authorized: false`.
+
+`formal_proof.status` is `proven`, `rejected`, `unknown`, `vacuous`, or `inconsistent_requirements`.
+Proofs contain the source hash, compiled contract hash, solver spec/facts hashes, replayable SMT queries,
+requirements ID and receipt hash. Missing evidence remains unknown even when a numeric bound is trivially
+true over a field's domain. Receipt hashes are reproducibility bindings, not signatures or third-party attestations.
+Semantic identity/category and supplier-policy predicates are explicit assumptions of the proof.
 
 The fetcher accepts only public HTTPS addresses, resolves and pins the connection to a checked IP while
 preserving TLS hostname validation, revalidates redirects, omits credentials/cookies, and limits response
