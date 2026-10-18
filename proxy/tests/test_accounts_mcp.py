@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import hashlib
+import html
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -63,14 +64,24 @@ def fields(page):
     return dict(re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]+)">', page.text))
 
 
+def callback_url(response):
+    assert response.status_code == 200, response.text
+    assert 'location' not in response.headers
+    target = html.unescape(re.search(r'id="oauth-return" href="([^"]+)"', response.text)[1])
+    assert f'content="0;url={html.escape(target)}"' in response.text
+    assert response.headers['referrer-policy'] == 'no-referrer'
+    assert response.headers['cache-control'] == 'no-store'
+    assert "form-action 'self';" in response.headers['content-security-policy']
+    return target
+
+
 def code(env, email=None, decision='allow'):
     env['client'].cookies.clear()
     response, verifier = start_flow(env)
     assert response.status_code == 200
     response = env['client'].post('/account/login', data={**fields(response), 'email': email or env['user']['email'],
                                                         'password': PASSWORD, 'decision': decision}, follow_redirects=False)
-    assert response.status_code == 303, response.text
-    params = parse_qs(urlsplit(response.headers['location']).query)
+    params = parse_qs(urlsplit(callback_url(response)).query)
     assert params['state'] == ['original-state']
     return params, verifier
 
@@ -165,7 +176,7 @@ def test_owner_isolation_scoped_retries_and_restart(account_env):
         assert client.get('/orders/' + oid, headers=headers(two)).status_code == 404
 
 
-@pytest.mark.parametrize('bad', [{'code_challenge_method': 'plain'}, {'resource': 'https://other.example/mcp'},
+@pytest.mark.parametrize('bad', [{'code_challenge_method': 'plain'}, {'resource': ''}, {'resource': 'https://other.example/mcp'},
                                {'redirect_uri': 'https://evil.example'}, {'response_type': 'token'}, {'scope': 'admin'}])
 def test_authorization_validation(account_env, bad):
     response, _ = start_flow(account_env, **bad)
@@ -185,6 +196,48 @@ def test_pkce_code_expiry_replay_and_token_audience(account_env):
     params, verifier = code(e)
     e['now'][0] += timedelta(minutes=3)
     assert exchange(e, params['code'][0], verifier).status_code == 400
+
+
+@pytest.mark.parametrize('authorize_resource', [True, False])
+@pytest.mark.parametrize('token_resource', [True, False])
+def test_optional_resource_remains_bound_through_login_and_refresh(account_env, authorize_resource, token_resource):
+    e = account_env
+    resource = e['settings'].public_url + '/mcp'
+    verifier = 'v' * 64
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip('=')
+    params = {'client_id': e['client_id'], 'redirect_uri': REDIRECT, 'response_type': 'code',
+              'code_challenge': challenge, 'code_challenge_method': 'S256', 'scope': 'purchasing', 'state': 'muse'}
+    if authorize_resource:
+        params['resource'] = resource
+    page = e['client'].get('/authorize', params=params)
+    assert page.status_code == 200
+    consent = e['client'].post('/account/login', data={**fields(page), 'email': e['user']['email'],
+                               'password': PASSWORD, 'decision': 'allow'}, follow_redirects=False)
+    callback = parse_qs(urlsplit(callback_url(consent)).query)
+    assert callback['state'] == ['muse']
+    auth_code = callback['code'][0]
+    assert e['store'].get(auth_code, 'code')['resource'] == resource
+    data = {'grant_type': 'authorization_code', 'client_id': e['client_id'], 'code': auth_code,
+            'code_verifier': verifier, 'redirect_uri': REDIRECT}
+    if token_resource:
+        data['resource'] = resource
+    for invalid in ('', 'https://other.example/mcp'):
+        assert e['client'].post('/token', data={**data, 'resource': invalid}).status_code == 400
+    assert e['client'].post('/token', data={**data, 'code_verifier': 'x' * 64}).status_code == 400
+    response = e['client'].post('/token', data=data)
+    assert response.status_code == 200
+    tokens = response.json()
+    assert e['store'].get(tokens['access_token'], 'access')['resource'] == resource
+    assert e['store'].get(tokens['refresh_token'], 'refresh')['resource'] == resource
+    assert rpc(e, tokens, 'tools/list').status_code == 200
+    refresh = {'grant_type': 'refresh_token', 'client_id': e['client_id'], 'refresh_token': tokens['refresh_token']}
+    for invalid in ('', 'https://other.example/mcp'):
+        assert e['client'].post('/token', data={**refresh, 'resource': invalid}).status_code == 400
+    renewed = e['client'].post('/token', data=refresh)
+    assert renewed.status_code == 200
+    assert e['store'].get(renewed.json()['access_token'], 'access')['resource'] == resource
+    assert rpc(e, renewed.json(), 'tools/list').status_code == 200
+    assert rpc(e, tokens, 'tools/list').status_code == 401
 
 
 def test_refresh_rotation_replay_revokes_family(account_env):
@@ -250,6 +303,32 @@ def test_browser_form_origin_login_and_logout(account_env):
                                headers={'Origin': e['settings'].public_url}, follow_redirects=False)
     assert response.status_code == 303
     assert e['client'].get('/account', follow_redirects=False).headers['location'] == '/account/login'
+
+
+@pytest.mark.parametrize('decision', ['allow', 'deny'])
+def test_oauth_completion_ends_form_navigation_and_preserves_callback(account_env, decision):
+    e = account_env
+    login(e)
+    redirect = 'https://agent.example/callback?existing=one%26two'
+    client_id = e['store'].save_client(client_config({'redirect_uris': [redirect]}))
+    state = 'state<&"\' + spaces'
+    response, verifier = start_flow(e, client_id=client_id, redirect_uri=redirect, state=state)
+    assert 'name="password"' not in response.text
+    assert "form-action 'self';" in response.headers['content-security-policy']
+    form = {**fields(response), 'decision': decision}
+    complete = e['client'].post('/account/login', data=form, follow_redirects=False)
+    target = urlsplit(callback_url(complete))
+    assert target.scheme == 'https' and target.netloc == 'agent.example' and target.path == '/callback'
+    query = parse_qs(target.query)
+    assert query['existing'] == ['one&two'] and query['state'] == [state]
+    assert '<form' not in complete.text
+    assert e['client'].post('/account/login', data=form).status_code == 400
+    if decision == 'deny':
+        assert query['error'] == ['access_denied'] and 'code' not in query
+    else:
+        tokens = exchange(e, query['code'][0], verifier, client_id=client_id, redirect_uri=redirect)
+        assert tokens.status_code == 200
+        assert exchange(e, query['code'][0], verifier, client_id=client_id, redirect_uri=redirect).status_code == 400
 
 
 def test_legacy_config_disabled_and_audit_private(account_env):

@@ -1,5 +1,6 @@
 """The official MCP client discovers OAuth, signs in, and submits independently verified listings."""
 import asyncio
+import html
 import json
 import re
 from pathlib import Path
@@ -66,8 +67,10 @@ def test_official_mcp_oauth_client_to_ms_verification(tmp_path):
                 fields = dict(re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]+)">', page.text))
                 response = await browser.post('/account/login', data={**fields, 'email': user['email'],
                                               'password': 'an integration-test password', 'decision': 'allow'})
-                assert response.status_code == 303, response.text
-                query = parse_qs(urlsplit(response.headers['location']).query)
+                assert response.status_code == 200, response.text
+                target = html.unescape(re.search(r'id="oauth-return" href="([^"]+)"', response.text)[1])
+                assert f'content="0;url={html.escape(target)}"' in response.text
+                query = parse_qs(urlsplit(target).query)
                 callback.append((query['code'][0], query.get('state', [None])[0]))
 
             async def callback_handler():

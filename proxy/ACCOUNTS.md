@@ -108,8 +108,10 @@ the older request capability token. Other accounts' orders return 404. Client-su
 MS handoffs contain the resolved company/user profiles and decision, with no OAuth credentials or password hashes.
 
 OAuth endpoints: `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource/mcp`, `/authorize`,
-`/token`, `/revoke`, and opt-in `/register`. Requests to `/authorize` and `/token` must specify
-`resource=<public-origin>/mcp`; the only scope is `purchasing`. Callback matching is exact. Codes are one-use and expire
+`/token`, `/revoke`, and opt-in `/register`. If supplied, the `resource` parameter on `/authorize` and `/token`
+must equal `<public-origin>/mcp`. If omitted, authorization, code exchange, and refresh default
+to this issuer's single MCP resource; stored grants and tokens remain audience-bound. Explicit empty or different
+resource values are rejected. The only scope is `purchasing`. Callback matching is exact. Codes are one-use and expire
 in two minutes. PKCE, audience binding, CSRF, owner checks and revocation are enforced server-side.
 
 ## Existing enterprise demo
