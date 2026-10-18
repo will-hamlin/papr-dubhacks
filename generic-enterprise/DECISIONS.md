@@ -1,51 +1,49 @@
 # Decisions (proxy / "Acme Corp Purchasing")
 
-One line each. Contract-affecting items are marked **[contract]** for the agent team.
+One line each. Lines marked **[contract]** affect the demo website or the engine team.
 
-- Session contract is unchanged: exactly the fields in the brief, no additions (freight is deliberately not in it).
-- **[contract]** Canonical JSON = `json.dumps(sort_keys=True, separators=(",",":"), ensure_ascii=False)` UTF-8; signature is lowercase hex HMAC-SHA256.
-- **[contract]** `verify_session` (in `proxy/session_sig.py`, stdlib only) checks signature, `issued_at` not more than 60 s in the future, and `now < expires_at`.
-- Timestamps are UTC with explicit `+00:00` offset, second precision.
-- The login (mock SSO) session lasts 30 min; the signed session params are re-issued per request so spend numbers are fresh.
-- `session_id` is per login and shared by all runs from that login.
-- **[contract]** `callback_url` is `{PROXY_PUBLIC_URL}/proxy/events?token=<per-run secret>`; the agent must POST to it verbatim. Unknown token → 403. This authenticates the webhook without a new header.
-- Events are matched by token first; the first event or the `start_run` response fixes `run_id`, and a later mismatch is rejected (409).
-- The proxy has its own run ids (`r_…`) for the UI; the agent's id is stored as `agent_run_id`.
-- **[contract]** `cart_ready.payload` = `{cart: {items: [{sku, name, supplier_id, category, unit_price_cents, qty}]}, cart_hash?, total_cents?}`; prices must be JSON integers (floats → flagged).
-- **[contract]** `cart_hash` = SHA-256 hex of canonical JSON of `payload.cart` as received (`session_sig.cart_hash`); a mismatching agent hash → flagged.
-- **[contract]** `spec_ready.payload` = `{spec: {...}}`; `purchased.payload` = `{order_id, cart_hash?, total_cents?}`; `reason` is read from the top-level field, falling back to `payload.reason`.
-- The proxy computes the total itself: tax = round-half-up of `subtotal × tax_rate_bp / 10000`, freight = flat per distinct supplier from policy.
-- If the agent sends `total_cents` and it differs, the proxy gates on the higher of the two and sends the cart to the manager.
-- An approved supplier with no freight rate on file is treated as a hard violation (fail closed).
-- Category matching is case-insensitive with `-`/space normalized to `_`; blocked list stored as `age_restricted`, `gift_cards`.
-- "within user limit" means `total ≤ spend_limit_cents`; caps mean `spent + total ≤ cap`; threshold means `total < auto_buy_threshold` (at = manager).
-- Approved-but-unconfirmed carts reserve their total against the daily and job caps until `purchased`/failure, so parallel approvals can't both slip under a cap.
-- Spend numbers sent to the agent and used in gates include open reservations.
-- A manager approval overrides threshold, user limit and daily/job caps, but only up to the manager's own `spend_limit_cents`; hard violations are never overridable.
-- Manager approval re-runs the full gate (hard rules may have changed); a hard violation at that point flags the run.
-- `approve-cart` is forwarded with `approved_by` = the manager's id when a manager approved, else the requester's.
-- The cart gate preview is computed when `cart_ready` arrives (shown in the UI), but enforcement happens at user approval and again at manager approval.
-- The client must send back the `cart_hash` it was shown; a different hash → 409, so the user approves exactly what they saw.
-- `cart_ready` before the user approved the spec is flagged (fail closed); spec approval is never skipped. All non-flagged fake scripts therefore include `spec_ready`, including "laptop".
-- `needs_manager` from the agent after cart approval releases the reservation and routes to the approver; before cart approval it is remembered and forces manager routing when the user approves.
-- `purchased` for a cart the proxy didn't approve is recorded as an error/attempt, spend is still counted (conservative), and compliance is alerted.
-- Pre-flight treats an expired login, disabled purchasing, $0 limit, or an already-reached daily/job cap as a flag; a missing login is a 401 that is still audited.
-- A user with no approver whose cart needs a manager is flagged.
-- Added endpoints beyond the brief: `GET /users`, `GET /me`, `GET /config`, `GET /runs`, `GET /manager/queue`, `POST /logout`, `POST /runs/{id}/manager-reject`, `POST /runs/{id}/cancel`. The agent is not told about reject/cancel (no endpoint for it).
-- Run status is polled once a second by the UI (no SSE).
-- Audit: one entry per request, written when the run reaches a terminal state (purchased, flagged, error, cancelled); runs waiting on a manager have no entry yet.
-- Audit hash = SHA-256 of the canonical JSON of the entry without `hash`; entries carry `seq` and `prev_hash`; genesis is 64 zeros.
-- Audit forwarding to the agent is opt-in via `AGENT_AUDIT_URL` (best-effort POST of each entry); no guessed endpoint.
-- Runtime state lives in `var/` (gitignored): `company_policy.json` (live copy, seeded from `data/`, spend updated on each purchase), `audit.jsonl`, `outbox.jsonl`. `make reset` wipes it.
-- `spent_today_cents` resets when the date in the policy's timezone (America/Los_Angeles) changes; `spent_date` is set on first seed.
-- Runs and logins are in memory; a restart drops in-flight runs (audit and outbox persist).
-- Without `AGENT_URL`, a random per-process HMAC key is used if `PROXY_SHARED_SECRET` is unset; with `AGENT_URL`, a missing secret refuses to start.
-- The fake agent verifies the session signature like a real agent would, and delivers events through the same handler as the webhook.
-- Fake agent delay defaults to 1.2 s per event (`FAKE_AGENT_DELAY_S`); 0 delivers inline for tests.
-- Extra fake scripts "hunting knife" (blocked category) and "… from any seller" (unapproved supplier) simulate a misbehaving agent to demo the cart gate.
-- "Expensive one" script uses a $1,899 workstation; the spec echoes the $5,000 as `requested_budget_cents` marked non-authoritative.
-- Outbox recipients are fictional `@acme-demo.example` addresses; flags also go to `purchasing-compliance@acme-demo.example`.
-- `/outbox` and `/audit` require any signed-in user and show everything (demo transparency).
-- Sam's and Riley's job/cost codes and all ship-to addresses are invented; Riley has `spend_limit_cents: 0` and purchasing disabled.
-- Suppliers: sup_01 Cascade Electronics Supply (free freight), sup_03 Puget Office & Tech ($25), sup_02 Overlake Surplus ($15, not approved).
-- UI is a single vanilla HTML/JS page with hash routing; it never computes money, only formats integer cents.
+## Architecture (from the 2026-10-17 redesign)
+- The proxy is a standalone API: caller → proxy (authorize + policy + spec) → engine → response to caller. The portal UI, fake agent, Outbox, cart approval and manager queue were removed.
+- The proxy forwards synchronously and returns the engine's response as-is under `engine`; it doesn't inspect or re-check the engine's result.
+- Claude proposes the spec and deterministic code decides everything (authorization, policy, limits, unit conversion, weight normalization).
+- Spec parser: `claude-opus-5-5` via `client.beta.messages.parse` with a Pydantic schema, adaptive thinking, effort `medium`, and `fallbacks: "default"` (server-side refusal fallback).
+- If Claude is unavailable, declines, or returns nothing usable, the rule-based parser is used and a note says so; the deterministic gates still run either way.
+- `SPEC_PARSER=auto` uses Claude only when `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` is set, so `make dev` and tests run offline.
+
+## Auth  **[contract]**
+- The caller sends `auth = {user_id, issued_at, expires_at, sig}`; `sig` is hex HMAC-SHA256 over canonical JSON of the other three fields (sorted keys, no whitespace, UTF-8, `ensure_ascii=False`).
+- Role, limits and policy come only from the proxy's `data/*.json`; the caller can't send them.
+- Auth fails if the signature is wrong, any extra field is present, `issued_at` is more than 60 s in the future, or now ≥ `expires_at`. `make_auth` defaults to 30 min.
+- Without `PROXY_SHARED_SECRET` the proxy refuses to start; `make dev` sets a local-only default.
+
+## Authorization vs policy
+- `not_authorized`: bad auth or unknown user (401); purchasing disabled, $0 limit, or daily/job cap already reached (403).
+- `violates_company_policy` (403): blocked category from the parser, OR a blocked keyword (per category in `blocked_keywords`) in the raw text, item or constraints, OR quantity outside 1–100.
+- Keyword matching is a backstop for a parser that mislabels a category (or is prompt-injected); it can over-block (e.g. "gun" in "glue gun"). Tune the lists in `data/company_policy.json`.
+- Authorization runs before the parser, so a disabled user's text is never sent to Claude.
+- Policy runs before the "unclear" check, so a vague but blocked request is reported as a policy violation.
+
+## Specs, weights, limits  **[contract]**
+- The engine payload has `specs`, `weights`, `priority` and `limits`, and is signed as `proxy_sig` (HMAC over canonical JSON of everything else); the engine verifies it with `verify_payload`.
+- Constraints are typed: `{field, op ∈ eq|ne|ge|le, value, unit, required}`. The LLM never writes solver code (per the "wrong encoding" risk in the planning doc).
+- Numeric values are converted to integers in base units with `Decimal` (no floats): mm, g, MB (decimal GB/TB), W, mV, mAh, Hz, count.
+- Rounding is toward the user's side: `ge` rounds up, `le` rounds down, `eq`/`ne` round half up (with a note).
+- Required numeric bounds that contradict each other are rejected as `unclear_request` before the engine sees them (the "vacuous truth" risk).
+- An unreadable required value is `unclear_request`; an unreadable optional one is dropped, with a note.
+- Fields the request didn't mention are left out: the engine must treat them as unknown, not false or zero.
+- `condition` is `new|refurbished|used|unspecified`; `unspecified` means the user didn't say.
+- `specs.english` renders each constraint in plain English for the caller to show the user.
+- Weights are integers that sum to exactly 100 (largest-remainder rounding); unknown or zero weights fall back to defaults.
+- `priority` is the lexicographic order (weight descending, then name), so the engine can rank lexicographically instead of trusting arbitrary weighted sums.
+- `limits.max_total_cents` = min(user spend limit, daily cap − spent today, job cap − spent on job), covering items + tax + freight.
+- A budget in the request can only lower `max_total_cents`, never raise it; a higher one is capped and noted ("my manager said $5,000").
+- Approved suppliers with no freight rate on file are left out of `limits.approved_suppliers` (fail closed).
+- The auto-buy threshold and manager approval were dropped with the approval flow; reintroduce them if the engine or demo site needs a human-approval step.
+
+## State and audit
+- Policy is always read from `data/company_policy.json`; only spend counters live in `var/spend.json` (seeded from the policy file, daily reset at local midnight in America/Los_Angeles).
+- The proxy doesn't learn about completed purchases yet, so spend counters don't move. A signed "purchase completed" hook is a follow-up.
+- Every `POST /orders` writes exactly one audit entry: `kind=order` if accepted, `attempt` otherwise, with `decision` and `reason`.
+- The audit log is append-only JSONL; each entry carries `seq`, `prev_hash` and `hash` = SHA-256 of its canonical JSON. `GET /audit` reports `chain_valid`.
+- `GET /audit` is unauthenticated; run the proxy on an internal network or put it behind the demo site.
+- Users, suppliers, addresses and emails are fictional (`@acme-demo.example`).

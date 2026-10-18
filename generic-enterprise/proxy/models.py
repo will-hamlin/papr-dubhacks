@@ -1,12 +1,10 @@
-"""Typed data for users, company policy, carts and agent events. All money is integer cents."""
+"""Typed data: users, company policy, request bodies, and the spec proposal. Money is integer cents."""
 
 from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
-
-Cents = Field(strict=True, ge=0)
+from pydantic import BaseModel, Field
 
 
 class User(BaseModel):
@@ -31,7 +29,7 @@ class Policy(BaseModel):
     suppliers: dict[str, str] = {}
     approved_suppliers: list[str]
     blocked_categories: list[str]
-    auto_buy_threshold_cents: int = Field(strict=True, ge=0)
+    blocked_keywords: dict[str, list[str]] = {}
     daily_cap_cents: int = Field(strict=True, ge=0)
     per_job_cap_cents: int = Field(strict=True, ge=0)
     tax_rate_bp: int = Field(strict=True, ge=0, le=10000)
@@ -41,42 +39,49 @@ class Policy(BaseModel):
     spent_date: str | None = None
 
 
-class CartItem(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    sku: str
-    name: str
-    supplier_id: str
-    category: str
-    unit_price_cents: int = Field(strict=True, ge=0)
-    qty: int = Field(strict=True, ge=1, le=1000)
-
-
-class Cart(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    items: list[CartItem] = Field(min_length=1)
-
-
-EventType = Literal["spec_ready", "cart_ready", "needs_manager", "purchased", "flagged", "error"]
-
-
-class AgentEvent(BaseModel):
-    run_id: str
-    type: EventType
-    payload: dict[str, Any] = {}
-    reason: str | None = None
-
-
-class LoginBody(BaseModel):
-    user_id: str
-
-
-class RequestBody(BaseModel):
+class OrderBody(BaseModel):
+    auth: dict[str, Any]
     request_text: str = Field(min_length=1, max_length=2000)
 
 
-class ApproveCartBody(BaseModel):
-    cart_hash: str
+# ---------------------------------------------------------------- spec proposal (what Claude / rules return)
+
+Category = Literal["electronics", "computer_accessories", "office_supplies", "tools", "safety_equipment",
+                   "furniture", "software", "cleaning_supplies", "weapons", "medicine", "age_restricted",
+                   "gift_cards", "other"]
+
+Criterion = Literal["price", "quality", "delivery_speed", "brand_match", "warranty", "supplier_rating",
+                    "durability", "compatibility"]
 
 
-class RejectBody(BaseModel):
-    reason: str | None = Field(default=None, max_length=500)
+Op = Literal["eq", "ne", "ge", "le"]
+
+Unit = Literal["mm", "cm", "m", "in", "ft", "g", "kg", "oz", "lb", "MB", "GB", "TB", "W", "V", "mAh", "Hz",
+               "GHz", "count"]
+
+Condition = Literal["new", "refurbished", "used", "unspecified"]
+
+
+class Constraint(BaseModel):
+    field: str = Field(description="snake_case property name without unit, e.g. power, ram, length, connector, compatible_with")
+    op: Op = Field(description="eq, ne, ge (at least) or le (at most)")
+    value: str = Field(description="The value: a plain number for numeric fields (e.g. '65', '15.6'), else the text value")
+    unit: Unit | None = Field(default=None, description="Unit of a numeric value; null for text values")
+    required: bool = Field(description="True if the item is useless without it; false if merely preferred")
+
+
+class Weight(BaseModel):
+    criterion: Criterion
+    weight: int = Field(description="Relative importance 0-100; weights should add up to 100")
+
+
+class SpecProposal(BaseModel):
+    understood: bool = Field(description="False if the text is not a purchase request or is too vague to search")
+    unclear_reason: str | None = Field(default=None, description="Why it could not be understood, if understood is false")
+    item: str = Field(description="What to buy, as a short noun phrase")
+    category: Category
+    quantity: int = Field(description="Number of units requested; 1 if not stated")
+    condition: Condition = Field(description="new / refurbished / used if the request says so, else unspecified")
+    constraints: list[Constraint]
+    weights: list[Weight]
+    stated_budget_cents: int | None = Field(default=None, description="Any budget or price ceiling written in the request, in integer cents; null if none")

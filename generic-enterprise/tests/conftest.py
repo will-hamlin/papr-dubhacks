@@ -7,7 +7,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from proxy.app import create_app
+from proxy.engine import StubEngine
 from proxy.service import Settings
+from proxy.signing import make_auth
+from proxy.spec import RuleSpecParser
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 SECRET = "test-secret"
@@ -24,26 +27,8 @@ class Clock:
         self.t += timedelta(**kw)
 
 
-class StubAgent:
-    """Records calls and does nothing; tests drive events through the real webhook."""
-
-    def __init__(self):
-        self.calls = []
-
-    async def start_run(self, request_text, session, session_sig, callback_url):
-        self.calls.append(("start_run", dict(request_text=request_text, session=session,
-                                             session_sig=session_sig, callback_url=callback_url)))
-        return f"ag_{len(self.calls)}"
-
-    async def approve_spec(self, run_id, approved_by):
-        self.calls.append(("approve_spec", dict(run_id=run_id, approved_by=approved_by)))
-
-    async def approve_cart(self, run_id, approved_by, cart_hash):
-        self.calls.append(("approve_cart", dict(run_id=run_id, approved_by=approved_by, cart_hash=cart_hash)))
-
-
 class Env:
-    def __init__(self, tmp_path: Path, policy: dict | None = None, agent=None):
+    def __init__(self, tmp_path: Path, policy: dict | None = None, parser=None, engine=None):
         self.data = tmp_path / "data"
         shutil.copytree(DATA, self.data)
         if policy:
@@ -51,53 +36,19 @@ class Env:
             p.update(policy)
             (self.data / "company_policy.json").write_text(json.dumps(p))
         self.clock = Clock()
-        self.settings = Settings(data_dir=self.data, var_dir=tmp_path / "var", fake_delay_s=0,
-                                 shared_secret=SECRET)
-        self.app = create_app(self.settings, agent=agent, clock=self.clock)
+        self.settings = Settings(shared_secret=SECRET, data_dir=self.data, var_dir=tmp_path / "var")
+        self.engine = engine or StubEngine()
+        self.app = create_app(self.settings, parser=parser or RuleSpecParser(), engine=self.engine,
+                              clock=self.clock)
         self.proxy = self.app.state.proxy
-        self.agent = self.proxy.agent
-        self.clients = {}
+        self.client = TestClient(self.app)
 
-    def as_user(self, user_id: str) -> TestClient:
-        if user_id not in self.clients:
-            c = TestClient(self.app)
-            assert c.post("/login", json={"user_id": user_id}).status_code == 200
-            self.clients[user_id] = c
-        return self.clients[user_id]
+    def auth(self, user_id="u_jordan", **kw):
+        return make_auth(user_id, SECRET, now=self.clock(), **kw)
 
-    def request(self, text: str, user_id: str = "u_jordan") -> dict:
-        r = self.as_user(user_id).post("/request", json={"request_text": text})
-        assert r.status_code == 200, r.text
-        return r.json()
-
-    def approve_spec(self, run: dict, user_id: str = "u_jordan") -> dict:
-        r = self.as_user(user_id).post(f"/runs/{run['id']}/approve-spec")
-        assert r.status_code == 200, r.text
-        return r.json()
-
-    def approve_cart(self, run: dict, user_id: str = "u_jordan") -> dict:
-        r = self.as_user(user_id).post(f"/runs/{run['id']}/approve-cart", json={"cart_hash": run["cart_hash"]})
-        assert r.status_code == 200, r.text
-        return r.json()
-
-    def through_cart(self, text: str) -> dict:
-        run = self.request(text)
-        assert run["status"] == "spec_ready", run
-        run = self.approve_spec(run)
-        assert run["status"] == "cart_ready", run
-        return self.approve_cart(run)
-
-    def token(self, run_id: str) -> str:
-        return self.proxy.runs[run_id].callback_token
-
-    def event(self, run_id: str, type_: str, payload: dict | None = None, reason: str | None = None):
-        run = self.proxy.runs[run_id]
-        return self.as_user("u_jordan").post(
-            f"/proxy/events?token={run.callback_token}",
-            json={"run_id": run.agent_run_id, "type": type_, "payload": payload or {}, "reason": reason})
-
-    def outbox(self, run_id: str) -> list[dict]:
-        return self.proxy.outbox.for_run(run_id)
+    def order(self, text, user_id="u_jordan", auth=None):
+        r = self.client.post("/orders", json={"auth": auth or self.auth(user_id), "request_text": text})
+        return r.status_code, r.json()
 
 
 @pytest.fixture

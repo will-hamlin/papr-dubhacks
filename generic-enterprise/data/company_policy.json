@@ -8,9 +8,16 @@
     "sup_02": "Overlake Surplus Liquidators",
     "sup_03": "Puget Office & Tech"
   },
-  "approved_suppliers": ["sup_01", "sup_03"],
-  "blocked_categories": ["weapons", "medicine", "age_restricted", "gift_cards"],
-  "auto_buy_threshold_cents": 50000,
+  "approved_suppliers": [
+    "sup_01",
+    "sup_03"
+  ],
+  "blocked_categories": [
+    "weapons",
+    "medicine",
+    "age_restricted",
+    "gift_cards"
+  ],
   "daily_cap_cents": 150000,
   "per_job_cap_cents": 300000,
   "tax_rate_bp": 1025,
@@ -20,6 +27,60 @@
     "sup_03": 2500
   },
   "spent_today_cents": 21000,
-  "spent_by_job": {"J-1042": 64000},
-  "spent_date": null
+  "spent_by_job": {
+    "J-1042": 64000
+  },
+  "spent_date": null,
+  "blocked_keywords": {
+    "weapons": [
+      "knife",
+      "knives",
+      "firearm",
+      "gun",
+      "guns",
+      "ammo",
+      "ammunition",
+      "rifle",
+      "pistol",
+      "taser",
+      "pepper spray",
+      "machete"
+    ],
+    "medicine": [
+      "medication",
+      "medicine",
+      "prescription",
+      "antibiotic",
+      "antibiotics",
+      "opioid",
+      "painkiller",
+      "painkillers",
+      "ibuprofen",
+      "acetaminophen"
+    ],
+    "age_restricted": [
+      "alcohol",
+      "beer",
+      "wine",
+      "liquor",
+      "whiskey",
+      "vodka",
+      "tobacco",
+      "cigarette",
+      "cigarettes",
+      "vape",
+      "vapes",
+      "nicotine",
+      "cannabis",
+      "lottery"
+    ],
+    "gift_cards": [
+      "gift card",
+      "gift cards",
+      "giftcard",
+      "prepaid card",
+      "prepaid visa",
+      "store credit"
+    ]
+  }
 }

@@ -5,9 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Callable
 
-from .session_sig import canonical_json
+from .signing import canonical_json
 
 GENESIS = "0" * 64
 
@@ -28,9 +27,8 @@ def verify_chain(entries: list[dict]) -> tuple[bool, int | None]:
 
 
 class AuditLog:
-    def __init__(self, path: Path, on_append: Callable[[dict], None] | None = None):
+    def __init__(self, path: Path):
         self.path = path
-        self.on_append = on_append
         self.path.touch(exist_ok=True)
         entries = self.entries()
         self._seq = len(entries)
@@ -53,8 +51,6 @@ class AuditLog:
             f.write(json.dumps(entry, sort_keys=True) + "\n")
         self._seq += 1
         self._prev = entry["hash"]
-        if self.on_append:
-            self.on_append(entry)
         return entry
 
     def verify(self) -> tuple[bool, int | None]:

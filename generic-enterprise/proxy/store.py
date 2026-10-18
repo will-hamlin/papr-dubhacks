@@ -1,4 +1,4 @@
-"""Loads users + company policy, and tracks company spend (committed + reserved)."""
+"""Loads users + company policy and reports company spend so far."""
 
 from __future__ import annotations
 
@@ -19,57 +19,38 @@ def load_users(data_dir: Path) -> dict[str, User]:
 
 
 class PolicyStore:
-    """The live policy is var/company_policy.json, seeded from data/company_policy.json.
-
-    Spend is written back on every purchase. Reservations hold money for carts that were
-    approved but not yet confirmed purchased, so two approvals can't both slip under a cap.
-    """
+    """Policy always comes from data/company_policy.json. Only spend state lives in var/spend.json,
+    seeded from the policy file's spent_* fields the first time the proxy starts."""
 
     def __init__(self, data_dir: Path, var_dir: Path, clock: Callable[[], datetime]):
         self.clock = clock
-        self.path = var_dir / "company_policy.json"
-        if not self.path.exists():
-            seed = json.loads((data_dir / "company_policy.json").read_text())
-            policy = Policy.model_validate(seed)
-            if policy.spent_date is None:
-                policy.spent_date = self._today(policy)
-            self._write(policy)
-        self.policy = Policy.model_validate(json.loads(self.path.read_text()))
-        self.reservations: dict[str, tuple[str | None, int]] = {}
+        self.policy = Policy.model_validate(json.loads((data_dir / "company_policy.json").read_text()))
+        self.path = var_dir / "spend.json"
+        if self.path.exists():
+            state = json.loads(self.path.read_text())
+            self.policy.spent_today_cents = state["spent_today_cents"]
+            self.policy.spent_by_job = state["spent_by_job"]
+            self.policy.spent_date = state["spent_date"]
+        elif self.policy.spent_date is None:
+            self.policy.spent_date = self._today()
+        self._write()
 
-    def _today(self, policy: Policy) -> str:
-        return self.clock().astimezone(ZoneInfo(policy.timezone)).date().isoformat()
+    def _today(self) -> str:
+        return self.clock().astimezone(ZoneInfo(self.policy.timezone)).date().isoformat()
 
-    def _write(self, policy: Policy) -> None:
+    def _write(self) -> None:
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(policy.model_dump(), indent=2) + "\n")
+        p = self.policy
+        tmp.write_text(json.dumps({"spent_today_cents": p.spent_today_cents, "spent_by_job": p.spent_by_job,
+                                   "spent_date": p.spent_date}, indent=2) + "\n")
         os.replace(tmp, self.path)
 
-    def _roll_day(self) -> None:
-        today = self._today(self.policy)
+    def spend(self, job: str | None) -> tuple[int, int]:
+        """(spent_today_cents, spent_on_job_cents). Today's spend resets at local midnight."""
+        today = self._today()
         if self.policy.spent_date != today:
             self.policy.spent_today_cents = 0
             self.policy.spent_date = today
-            self._write(self.policy)
-
-    def spend(self, job: str | None) -> tuple[int, int]:
-        """(spent_today_cents, spent_on_job_cents), both including open reservations."""
-        self._roll_day()
-        reserved_today = sum(c for _, c in self.reservations.values())
-        reserved_job = sum(c for j, c in self.reservations.values() if j == job)
+            self._write()
         on_job = self.policy.spent_by_job.get(job, 0) if job else 0
-        return self.policy.spent_today_cents + reserved_today, on_job + reserved_job
-
-    def reserve(self, run_id: str, job: str | None, cents: int) -> None:
-        self.reservations[run_id] = (job, cents)
-
-    def release(self, run_id: str) -> None:
-        self.reservations.pop(run_id, None)
-
-    def commit(self, run_id: str, job: str | None, cents: int) -> None:
-        self.release(run_id)
-        self._roll_day()
-        self.policy.spent_today_cents += cents
-        if job:
-            self.policy.spent_by_job[job] = self.policy.spent_by_job.get(job, 0) + cents
-        self._write(self.policy)
+        return self.policy.spent_today_cents, on_job

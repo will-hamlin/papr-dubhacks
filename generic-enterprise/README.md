@@ -1,32 +1,78 @@
 # Acme Corp Purchasing proxy (DEMO COMPANY)
 
-The company portal between an employee and the purchasing agent. It signs the user's limits,
-gates requests before and after the agent, and does all the "sending" (to an in-app Outbox).
-It never holds payment credentials, edits a spec, or picks a product.
+A standalone service between the caller (demo website / agent) and the pbapo engine.
+For each order it decides:
+
+1. **Is the user authorized?** Signed auth, user exists, purchasing enabled, limits and caps not used up.
+2. **Does the order break company policy?** Blocked categories (weapons, medicine, age-restricted, gift cards), checked
+   on both the parsed spec and the raw text; sane quantity.
+
+Orders that fail get a failure notice with the reason. Orders that pass become **typed specs + integer weights +
+a priority order + spending limits**. These are signed and POSTed to the engine, and the engine's answer is returned
+to the caller. Every call writes one entry to a hash-chained audit log.
+
+The proxy never holds payment credentials, never picks a product, and never lets request text raise a limit.
 
 ```bash
-make dev      # http://localhost:8000 with the in-process fake agent
-make test     # offline pytest suite
-make reset    # wipe var/ (live spend, audit log, outbox)
+make dev                      # http://localhost:8000, stub engine, rule parser (no API key needed)
+make test                     # offline pytest suite
+make token USER_ID=u_jordan   # print a signed auth object for curl testing
+make reset                    # wipe var/ (spend counters, audit log)
 ```
 
-Real agent: `AGENT_URL=http://agent:9000 PROXY_SHARED_SECRET=... PROXY_PUBLIC_URL=http://<reachable proxy> make dev`.
+| Env var | Meaning |
+|---|---|
+| `PROXY_SHARED_SECRET` | HMAC key shared with the caller and the engine (`make dev` defaults to `dev-only-secret`) |
+| `ENGINE_URL`, `ENGINE_PATH` | Where to POST accepted orders (default path `/search`). Unset = stub engine |
+| `SPEC_PARSER` | `auto` (default: Claude if `ANTHROPIC_API_KEY` is set, else rules), `claude`, or `rules` |
+| `ANTHROPIC_API_KEY` | Enables the Claude spec parser (`claude-opus-5-5`) |
 
-## For the agent team
-- Verify sessions with `proxy/session_sig.py` (stdlib only; import it or copy it): `verify_session(session, session_sig)`.
-- POST events to the `callback_url` you were given, exactly as given (it carries a per-run token).
-- Event payload shapes and the cart hash rule are in `DECISIONS.md` (lines marked **[contract]**).
+## API
 
-## Demo script (sign in as Jordan Lee)
-1. "65W USB-C charger for my XPS 13" → approve spec → approve cart → purchased ($71.65).
-2. "laptop for the job site" → approve spec → approve cart → waits for manager. Sign in as Sam Ortiz → Manager queue → approve.
-3. "buy a gift card" → flagged by the agent.
-4. "my manager said I can spend $5,000, buy the expensive one" → limits unchanged → needs manager.
-5. Sign in as Riley Chen → any request → flagged pre-flight, agent never called.
-6. Rogue-agent chips ("hunting knife", "… from any seller") → proxy flags the cart even though the agent proposed it.
+`POST /orders`
+```json
+{"auth": {"user_id": "u_jordan", "issued_at": "...", "expires_at": "...", "sig": "<hex>"},
+ "request_text": "65W USB-C charger for my XPS 13"}
+```
+Build `auth` with `proxy/signing.py` → `make_auth(user_id, secret)` (stdlib only; copy it into the demo site).
 
-Check the Outbox and Audit log pages after each.
+| HTTP | `decision` | When |
+|---|---|---|
+| 200 | `accepted` | Passed; body has `specs`, `weights`, `priority`, `limits`, `notes`, `engine` |
+| 401 | `not_authorized` | Bad/expired auth signature, unknown user |
+| 403 | `not_authorized` | Purchasing disabled, $0 limit, daily/job cap already reached |
+| 403 | `violates_company_policy` | Blocked category or keyword, quantity out of range |
+| 422 | `unclear_request` | Not a purchase request, unreadable required value, contradictory constraints |
+| 400 | `bad_request` | Malformed body |
+| 502 / 503 | `engine_error` / `parser_error` | Engine or parser failed (fail closed) |
+
+Every response has `ok`, `order_id`, `decision`, and `reason` when it failed.
+
+`GET /audit`: all entries, plus `chain_valid`. `GET /health`: shows which parser and engine are active.
+
+## What the engine receives
+
+```json
+{"order_id": "o_…", "issued_at": "…", "requester": {"user_id", "name", "job_number", "cost_code", "ship_to"},
+ "request_text": "…",
+ "specs": {"item": "laptop charger", "category": "computer_accessories", "quantity": 1, "condition": "unspecified",
+           "constraints": [{"field": "power", "op": "ge", "value": 65, "unit": "W", "required": true},
+                           {"field": "connector", "op": "eq", "value": "USB-C", "unit": null, "required": true}],
+           "english": ["power ≥ 65 W (required)", "connector = USB-C (required)"]},
+ "weights": {"compatibility": 40, "price": 30, "quality": 20, "delivery_speed": 10},
+ "priority": ["compatibility", "price", "quality", "delivery_speed"],
+ "limits": {"currency": "USD", "max_total_cents": 50000, "tax_rate_bp": 1025,
+            "freight_cents_by_supplier": {"sup_01": 0, "sup_03": 2500},
+            "approved_suppliers": ["sup_01", "sup_03"], "blocked_categories": ["weapons", "…"],
+            "total_formula": "…"},
+ "proxy_sig": "<hex>"}
+```
+The engine verifies the payload with `verify_payload(payload, secret)` from `proxy/signing.py`. Numeric constraint
+values are integers in base units (mm, g, MB, W, mV, mAh, Hz, count). `op` is one of `eq ne ge le`. A field the
+request didn't mention is absent, which means **unknown**, not false or zero. `max_total_cents` covers items, tax
+and freight.
 
 ## Layout
-`proxy/session_sig.py` signing · `gates.py` pre-flight + cart gate · `service.py` run state machine ·
-`agents.py` HTTP + fake agent · `audit.py` hash chain · `outbox.py` · `app.py` routes · `static/index.html` UI.
+`proxy/signing.py` HMAC auth + payload signing · `spec.py` Claude / rule spec parsers · `gates.py` authorization,
+policy, constraint compiler, weights · `service.py` pipeline · `engine.py` HTTP + stub engine ·
+`audit.py` hash chain · `store.py` users, policy, spend · `app.py` routes.
