@@ -1,7 +1,3 @@
-.venv/
-var/
-__pycache__/
-.pytest_cache/
 node_modules/
 *.log
 .env
