@@ -1,0 +1,92 @@
+# PAPR project readiness
+
+## Integrated verifier demo — 18 October 2026
+
+The local demo now includes the pinned Agent Purchase Verifier Z3 core. Managed
+and personal-agent listings receive proofs against PAPR's exact compiled requirements
+and policy, with snapshot/contract bindings and replayable solver queries. The UI
+shows proven/rejected/unresolved counts, condition-level evidence and exportable
+receipts. Fictional source data is visibly labeled; the solver checks are real.
+
+`python scripts/run_demo.py` starts an isolated three-process demo at port 3100,
+with proxy 8200 and MS 8201. It defaults to deterministic parsing without paid
+services. `--smoke` exercises both request paths over real HTTP and shuts down.
+The existing preview and pitch artifacts are independent of this stack.
+
+This completes the local solver integration, not the separate backend's account,
+approval or payment integration. Live search, general semantic product matching,
+supplier truth, live finance and purchasing remain outside demo acceptance.
+See [VERIFIER_INTEGRATION.md](VERIFIER_INTEGRATION.md) for the exact proof scope
+and external integration gaps. The earlier assessment below is historical context.
+
+Verification on this branch: 215 Python tests and 30 JavaScript tests passed,
+along with JavaScript syntax checks. Real HTTP smoke tests passed for managed
+charger/laptop requests and an agent candidate batch. Browser checks covered
+desktop and a 390px viewport, reload persistence, and proof export with no console
+errors. The downloaded receipt's three hashes and six SMT queries were replayed.
+The official MCP/OAuth integration test also asserts a requirements-bound proof.
+
+## Previous demo scope (before solver integration)
+
+The current target is a local demo, not a live deployment. See [DEMO.md](DEMO.md) for the walkthrough.
+The supplied Claude credential has passed a minimal inference call and a real structured laptop/RAM parse;
+the credential stays in ignored local environment files. The opt-in demo factory supplies fictional source
+pages through the shared listing checker, so both client paths can demonstrate evidence outcomes without
+deploying the external search backend. This is simulated listing evidence, not a formal solver proof.
+
+Employee requests now poll real persisted proxy/MS status and display claim/requirement checks. Interrupted
+local work has an operator retry command with persisted phase boundaries; uncertain external submissions
+are not automatically retried. Backend polling runs independently of queue processing.
+
+The demo checker now compares product type and requested identity words, rejects known unrelated products
+and common accessories, and leaves ambiguous titles unverified. RAM bounds are supported by the rules parser;
+uncovered requirements and constraint overflow stop preparation instead of silently disappearing. This is a
+conservative demo vocabulary, not general semantic product matching or a guarantee of LLM extraction completeness.
+
+Public hosting, enterprise SSO, payment execution, budget reservations for purchases, production finance
+roles, and external formal-verifier integration remain deferred. The finance historical ledger remains fake
+data. The original broader release assessment below is retained as a future-work reference.
+
+Source review: 18 October 2026, baseline `d44a490`, reconciled with the parallel configuration and finance-demo changes. **Numbered source references below identify the original baseline**, not final integrated line numbers; configuration additions are identified by file and symbol instead. This review covers functionality, not optimality/ranking, which is explicitly deferred. The browser CSRF repair is included in the baseline.
+
+**Assessment:** the account-authenticated request-to-listing-evidence flow is implemented, with substantial offline coverage. General product verification, live managed search, and operational recovery still need work before a real company pilot. The finance demo can illustrate the experience; it is not yet a live finance console. Deployment to the i5 / 8 GB NixOS ThinkPad remains a reasonable small-pilot target with remote AI, subject to the acceptance checks below.
+
+## What exists
+
+- Operator-provisioned accounts and company policies; browser login; authorization-code OAuth with PKCE, rotating refresh tokens and revocation; authenticated HTTP API and MCP tools with account ownership checks. New account requests resolve current server-owned profiles (`proxy/proxy/service.py:340-372`, `proxy/proxy/agent_connection.py:59-106`). Enterprise identity-provider federation is not implemented; it is optional for a PAPR-account pilot.
+- Proxy authorization and signed handoffs, including rejected requests; durable outbox retry; persisted MS request states and candidate batches (`proxy/proxy/service.py:105-145`, `main-service/main_service/store.py:33-49,70-104`).
+- MS requirement preparation and shared independent supplier-page checks for managed-search and personal-agent listings. Missing or ambiguous structured evidence remains unverified. The URL fetcher blocks private destinations and pins validated addresses (`main-service/main_service/service.py:76-113,124-166`; `main-service/main_service/listing_fetch.py:32-55`).
+- Separation of authorization, claim support, requirement support, and purchase permission. Local reports explicitly say `purchase_authorized: false`; a workflow marked complete is not necessarily a passing verification.
+- Configuration tooling now generates private application secrets and validates development/production profiles (`scripts/configure.py`, `CONFIGURATION.md`). Production startup requires Claude credentials/model, rule fallback disabled, an explicit live backend, supplier mappings, distinct application secrets and an HTTPS public origin; it forbids the legacy editable-profile connector (`MainService.__init__`, `Proxy.__init__`, `make_parser`). These guards prevent silently running the offline flow as production; preflight does not test provider access or deploy dependencies.
+- The read-only `/admin` finance demo adds fictional historical requests, filters, simulated evidence details and JSON export. Its fixture endpoint is deliberately a public local demo; it does not implement finance authorization, a live database console or formal proofs (`demo/README.md`, Finance demo).
+
+## Prioritized gaps
+
+| Priority | Missing behavior and source evidence | Next action / release condition |
+|---|---|---|
+| **Critical: requirement completeness and product matching** | Development rules recognize watts, USB-C and a narrow compatibility phrase, then return `understood=True`; RAM and many other explicit needs disappear (`main-service/main_service/spec.py:139-161`). Production now forbids that parser/fallback path, but parser selection does not establish complete requirement coverage. `compile_constraints` still silently slices to 20 (`main-service/main_service/proof.py:35-42`), although proposals have no corresponding maximum. Listing checks never compare the actual product to `specs.item` or its requested category; the category check only enforces a blocked list (`main-service/main_service/verification.py:194-221`). | Represent unsupported/omitted requirements explicitly and require clarification or return incomplete verification. Reject excess required constraints. Add product identity/category matching in every mode; a cheaper unrelated product must not be reported as satisfying a request. This is correctness, not optimality. |
+| **High: live search and formal-verifier integration** | Development can select the stub (`main-service/main_service/service.py:58-65`); production now refuses to start without an explicit live backend. Provider/backend availability is still unverified. Managed mode calls the external search backend, but agent candidate batches return after local evidence checking, without a solver invocation (`main-service/main_service/service.py:124-128,159-176`). The adapter only exposes search/status, not verification of submitted candidates (`main-service/main_service/engine.py:76-89,124-139`). | Deploy/access the separate backend and validate its actual contract. If formal proofs are part of the final product, add a shared verification-only contract for both candidate sources, preserving evidence provenance. Until then label reports as structured listing-evidence checks, not formal proofs. A key alone does not implement this missing interface. |
+| **High: recovery and timely results** | Restart converts active work to `interrupted`, but no recovery/cancel API exists; new batches only work in `awaiting_candidates` or `verification_complete` (`main-service/main_service/store.py:61-63,87-88`). The worker refreshes submitted backend jobs only after the entire local queue empties (`main-service/main_service/app.py:43-51`). | Add operator-visible recovery with safe replay/reconciliation rules and an explicit retry/cancel action. Schedule polling independently or fairly so sustained submissions do not starve managed results. Test restart during fetching and during an uncertain external submission. |
+| **High: live finance access and reproducible evidence** | `/audit` is an operator-token-only, global, unpaginated proxy log (`proxy/proxy/app.py:130-138`). Client APIs expose only individual owned requests; there is no finance role or company history endpoint (`proxy/proxy/agent_connection.py:42-56,80-106`). Evidence retains URL/time/hash and extracted facts, but not original source bytes or checker version (`main-service/main_service/verification.py:186-189,222-223`). | After the requested fake-data UI, add company-scoped read-only finance permissions, paginated request/batch history, filters/export, and an evidence detail contract. Retain a bounded source snapshot or canonical evidence artifact with parser/checker versions so a historical result can be reproduced after a listing changes. |
+| **High before actual purchasing: budget commitment** | Account spend is the sum of completed purchases; authorization does not reserve funds (`proxy/proxy/accounts.py:176-192`, `proxy/proxy/service.py:255-270`). The signed purchase callback checks each order's earlier ceiling, then records spend, without rechecking/reserving the aggregate budget (`proxy/proxy/service.py:304-338`). | Two outstanding orders can each consume the same remaining budget. If actual purchasing is in scope, add atomic reservations or a current-budget gate before commitment, with release/cancel/reconciliation. A post-purchase callback cannot undo overspend. Keep purchasing disabled while delivering verification-only functionality. |
+| **High for public pilot: deployment and real agent acceptance** | Configuration profiles, preflight and loopback launchers now exist, but NixOS service definitions, ingress, backup/restore and a deployed agent callback remain outstanding (`CONFIGURATION.md`, Start the pair). Health endpoints report process configuration, not successful downstream work (`proxy/proxy/app.py:56-59`, `main-service/main_service/app.py:68-70`). | Provision persistent directories and secrets; run one proxy and one MS worker under systemd, expose only proxy via stable HTTPS, and keep MS on loopback. Add queue-age/error monitoring and tested restore of accounts, audit/outbox and MS data. Validate login/consent, reconnect/refresh and MCP calls using the real agent's callback through that public origin. |
+| **Medium: enterprise client lifecycle** | Demo clients still submit editable profiles through the explicitly enabled legacy connector; submission history stores only 25 local receipts and does not poll verification (`demo/public/app.js:586-603`, `proxy/ACCOUNTS.md`, Existing enterprise demo). | Keep this mode visibly demo-only. Wire a real enterprise integration to account/server-managed identity, show pending and final outcomes, and distinguish rejected, failed, unverified and supported. A server-side signed integration already exists; do not expose its signing secret in a browser. |
+| **Medium: account administration** | Account creation, policy changes and password reset exist only in the local management CLI (`proxy/proxy/manage_accounts.py:15-31,40-65`). | A staffed pilot can use this CLI. Before self-service rollout, add controlled invitations/account recovery and delegated company administration; add enterprise SSO only when required by the customer. Do not enable users to choose their own company or spending policy. |
+
+## Read-only verification performed
+
+Two deterministic probes against this baseline confirmed the critical finding:
+
+1. `laptop with at least 32 GB RAM under $1000` becomes item `laptop`, `understood=true`, and **zero constraints** under `RuleSpecParser`.
+2. Given that unconstrained laptop spec, a fixture for an approved supplier's USD 20 **Stapler** in allowed category `office_supplies` returns both `claims_status=supported` and `requirements_status=supported`. The submitted claim is only `price_cents=2000`; the spec uses quantity 1 and condition `unspecified`. The fixture is a Schema.org `Product` with one `Offer`; limits are USD, max total 100000 cents, tax/freight zero, and blocked category `weapons`, with `supplier.example` mapped to approved supplier `sup_01`. The price claim is correctly supported; the misleading part is treating the unrelated listing as satisfying the laptop requirements.
+
+The probes used an in-memory supplier fixture, with no external requests or credentials. The new production guard prevents running the first probe's rules-parser path in production; the second probe exposes a shared checker gap independently of which parser supplied the spec. This review changed no application code and did not rerun the full regression suite. Existing tests and configuration preflight are not evidence of live LLM/backend/Muse integration.
+
+## Release acceptance checks
+
+- **Verification correctness:** requested RAM, dimensions, compatibility and item identity are either checked or explicitly unresolved; unrelated items and omitted required constraints cannot pass. Good, contradictory, unavailable and ambiguous supplier evidence produce distinct results.
+- **Both client paths:** account OAuth API and MCP complete authorization → requirements → candidates → persisted results; rejected decisions are documented; a second company cannot read the first company's orders or finance history. Legacy editable-profile mode remains off publicly.
+- **Live dependencies:** configured parser produces expected structured output; managed search returns usable candidate evidence; any promised formal proof is generated and checked for both candidate sources. Record exactly which integrations were exercised.
+- **Operations on the ThinkPad:** reboot/restart retains accounts and requests, interrupted work can be recovered safely, pending work does not starve polling, a backup restores successfully, and the agreed pilot concurrency has measured latency/memory limits. Prevent laptop sleep while serving.
+- **Finance truthfulness:** fake records are unmistakably labeled; live records expose immutable requirements, source evidence, check outcomes and request history. Authorization, verification and fulfillment remain separate statuses.
+- **If payments are enabled:** concurrent commitments cannot exceed company/job budgets; repeated callbacks are idempotent; cancellation releases reservations; final charged totals reconcile with the recorded order.

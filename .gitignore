@@ -1,0 +1,9 @@
+.venv/
+.pytest_cache/
+__pycache__/
+.env
+.env.*
+!.env.example
+!.env.production.example
+secrets/
+papr-pitch/.pptx-build/

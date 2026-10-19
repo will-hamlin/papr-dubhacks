@@ -1,0 +1,1371 @@
+{
+  "demo": true,
+  "notice": "Fictional records only. Listing evidence and fulfillment are simulated, not formal proofs or real purchases.",
+  "periodStart": "2026-10-03T12:15:00Z",
+  "snapshot": "2026-10-18T12:00:00Z",
+  "requests": [
+    {
+      "id": "PAPR-2218",
+      "title": "USB-C docking stations",
+      "company": "Northstar Industries",
+      "requester": "Alex Morgan",
+      "department": "Operations",
+      "supplier": "Office Supply Co.",
+      "quantity": 8,
+      "requestedCents": 184000,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-18T09:15:00Z",
+      "status": "pending",
+      "channel": "MCP · Personal agent",
+      "description": "Request 8 usb-c docking stations for operations. Total requested budget: $1,840.00. Required: At least 100 W.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed. Source evidence is incomplete. Awaiting a replacement listing or additional supplier evidence; no purchase was recorded.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2218",
+        "status": "unverified",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://office-supply-co.example/products/papr-2218",
+        "capturedAt": "2026-10-18T09:25:00Z",
+        "checks": [
+          {
+            "condition": "USB-C output",
+            "required": "At least 100 W",
+            "observed": "Power output is missing from supplier fixture.",
+            "status": "unverified"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $1,840.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Office Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-18T09:15:00Z",
+          "label": "Request received",
+          "detail": "Alex Morgan submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-18T09:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: NS-2026.10."
+        },
+        {
+          "at": "2026-10-18T09:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-18T09:23:00Z",
+          "label": "Agent listing received",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-18T09:25:00Z",
+          "label": "Evidence incomplete",
+          "detail": "Power output is missing from supplier fixture."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2217",
+      "title": "Ergonomic task chairs",
+      "company": "Northstar Industries",
+      "requester": "Jamie Chen",
+      "department": "Workplace",
+      "supplier": "Workplace Direct",
+      "quantity": 6,
+      "requestedCents": 264000,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-17T12:15:00Z",
+      "status": "verified",
+      "channel": "API · Enterprise",
+      "description": "Request 6 ergonomic task chairs for workplace. Total requested budget: $2,640.00. Required: At least 5 years.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 150000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. Procurement has not placed an order. This is not payment authorization.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2217",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://workplace-direct.example/products/papr-2217",
+        "capturedAt": "2026-10-17T12:25:00Z",
+        "checks": [
+          {
+            "condition": "Warranty",
+            "required": "At least 5 years",
+            "observed": "Fixture warranty: 5 years.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $1,500.00",
+            "observed": "Fixture total: $2,640.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Workplace Direct is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-17T12:15:00Z",
+          "label": "Request received",
+          "detail": "Jamie Chen submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-17T12:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: NS-2026.10."
+        },
+        {
+          "at": "2026-10-17T12:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-17T12:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-17T12:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture warranty: 5 years."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2216",
+      "title": "Benchtop centrifuge",
+      "company": "Meridian Research",
+      "requester": "Taylor Brooks",
+      "department": "Research",
+      "supplier": "Lab Supply Co.",
+      "quantity": 1,
+      "requestedCents": 312000,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-16T15:15:00Z",
+      "status": "verification_failed",
+      "channel": "MCP · Personal agent",
+      "description": "Request 1 benchtop centrifuge for research. Total requested budget: $3,120.00. Required: At least 15,000 rpm.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed. MS found a listing claim that contradicts the required specification. No purchase was recorded.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2216",
+        "status": "contradicted",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://lab-supply-co.example/products/papr-2216",
+        "capturedAt": "2026-10-16T15:25:00Z",
+        "checks": [
+          {
+            "condition": "Maximum speed",
+            "required": "At least 15,000 rpm",
+            "observed": "Fixture specification: 12,000 rpm.",
+            "status": "contradicted"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $3,120.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Lab Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-16T15:15:00Z",
+          "label": "Request received",
+          "detail": "Taylor Brooks submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-16T15:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-16T15:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-16T15:23:00Z",
+          "label": "Agent listing received",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-16T15:25:00Z",
+          "label": "Contradiction found",
+          "detail": "Fixture specification: 12,000 rpm."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2215",
+      "title": "27-inch research monitors",
+      "company": "Meridian Research",
+      "requester": "Sam Rivera",
+      "department": "Lab operations",
+      "supplier": "Display Supply Co.",
+      "quantity": 4,
+      "requestedCents": 139600,
+      "actualCents": 139600,
+      "currency": "USD",
+      "createdAt": "2026-10-15T18:15:00Z",
+      "status": "fulfilled",
+      "channel": "API · Enterprise",
+      "description": "Request 4 27-inch research monitors for lab operations. Total requested budget: $1,396.00. Required: 2560 × 1440.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2215",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://display-supply-co.example/products/papr-2215",
+        "capturedAt": "2026-10-15T18:25:00Z",
+        "checks": [
+          {
+            "condition": "Display resolution",
+            "required": "2560 × 1440",
+            "observed": "Fixture specification: 2560 × 1440.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $1,396.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Display Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-15T18:15:00Z",
+          "label": "Request received",
+          "detail": "Sam Rivera submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-15T18:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-15T18:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-15T18:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-15T18:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture specification: 2560 × 1440."
+        },
+        {
+          "at": "2026-10-16T06:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2215. Total $1,396.00. No real payment occurred."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2214",
+      "title": "Executive laptop upgrade",
+      "company": "Northstar Industries",
+      "requester": "Jamie Chen",
+      "department": "Workplace",
+      "supplier": null,
+      "quantity": 1,
+      "requestedCents": 285000,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-14T21:15:00Z",
+      "status": "denied",
+      "channel": "MCP · Personal agent",
+      "description": "Request 1 executive laptop upgrade for workplace. Total requested budget: $2,850.00. Evaluate against the assigned purchasing policy.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 150000
+      },
+      "decision": "Proxy denied: requested total exceeds this employee’s $1,500 per-request limit. MS recorded the denial. No search, verification, or purchase was started.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2214",
+        "status": "not_run",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": null,
+        "capturedAt": null,
+        "checks": [],
+        "note": "No proof was initiated because authorization was denied."
+      },
+      "events": [
+        {
+          "at": "2026-10-14T21:15:00Z",
+          "label": "Request received",
+          "detail": "Jamie Chen submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-14T21:16:00Z",
+          "label": "Authorization denied",
+          "detail": "Proxy denied: requested total exceeds this employee’s $1,500 per-request limit. MS recorded the denial. No search, verification, or purchase was started."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2213",
+      "title": "Safety eyewear replenishment",
+      "company": "Meridian Research",
+      "requester": "Taylor Brooks",
+      "department": "Research",
+      "supplier": "Lab Supply Co.",
+      "quantity": 24,
+      "requestedCents": 43200,
+      "actualCents": 43200,
+      "currency": "USD",
+      "createdAt": "2026-10-14T00:15:00Z",
+      "status": "fulfilled",
+      "channel": "API · Enterprise",
+      "description": "Request 24 safety eyewear replenishment for research. Total requested budget: $432.00. Required: ANSI Z87.1 listing claim.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2213",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://lab-supply-co.example/products/papr-2213",
+        "capturedAt": "2026-10-14T00:25:00Z",
+        "checks": [
+          {
+            "condition": "Safety claim",
+            "required": "ANSI Z87.1 listing claim",
+            "observed": "Supplier fixture states ANSI Z87.1; no independent certification check.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $432.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Lab Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-14T00:15:00Z",
+          "label": "Request received",
+          "detail": "Taylor Brooks submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-14T00:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-14T00:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-14T00:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-14T00:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Supplier fixture states ANSI Z87.1; no independent certification check."
+        },
+        {
+          "at": "2026-10-14T12:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2213. Total $432.00. No real payment occurred."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2212",
+      "title": "Adjustable monitor arms",
+      "company": "Northstar Industries",
+      "requester": "Alex Morgan",
+      "department": "Operations",
+      "supplier": "Workplace Direct",
+      "quantity": 10,
+      "requestedCents": 89000,
+      "actualCents": 89000,
+      "currency": "USD",
+      "createdAt": "2026-10-13T03:15:00Z",
+      "status": "fulfilled",
+      "channel": "MCP · Personal agent",
+      "description": "Request 10 adjustable monitor arms for operations. Total requested budget: $890.00. Required: At least 9 kg.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2212",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://workplace-direct.example/products/papr-2212",
+        "capturedAt": "2026-10-13T03:25:00Z",
+        "checks": [
+          {
+            "condition": "Load capacity",
+            "required": "At least 9 kg",
+            "observed": "Fixture specification: 10 kg.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $890.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Workplace Direct is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-13T03:15:00Z",
+          "label": "Request received",
+          "detail": "Alex Morgan submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-13T03:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: NS-2026.10."
+        },
+        {
+          "at": "2026-10-13T03:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-13T03:23:00Z",
+          "label": "Agent listing received",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-13T03:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture specification: 10 kg."
+        },
+        {
+          "at": "2026-10-13T15:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2212. Total $890.00. No real payment occurred."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2211",
+      "title": "Precision digital scale",
+      "company": "Meridian Research",
+      "requester": "Sam Rivera",
+      "department": "Lab operations",
+      "supplier": "Lab Supply Co.",
+      "quantity": 2,
+      "requestedCents": 96800,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-12T06:15:00Z",
+      "status": "pending",
+      "channel": "MCP · Personal agent",
+      "description": "Request 2 precision digital scale for lab operations. Total requested budget: $968.00. Required: 0.001 g.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed. Source evidence is incomplete. Awaiting a replacement listing or additional supplier evidence; no purchase was recorded.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2211",
+        "status": "unverified",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://lab-supply-co.example/products/papr-2211",
+        "capturedAt": "2026-10-12T06:25:00Z",
+        "checks": [
+          {
+            "condition": "Measurement precision",
+            "required": "0.001 g",
+            "observed": "Supplier fixture has no precision specification.",
+            "status": "unverified"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $968.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Lab Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-12T06:15:00Z",
+          "label": "Request received",
+          "detail": "Sam Rivera submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-12T06:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-12T06:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-12T06:23:00Z",
+          "label": "Agent listing received",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-12T06:25:00Z",
+          "label": "Evidence incomplete",
+          "detail": "Supplier fixture has no precision specification."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2210",
+      "title": "Conference-room cameras",
+      "company": "Northstar Industries",
+      "requester": "Alex Morgan",
+      "department": "Operations",
+      "supplier": "Office Supply Co.",
+      "quantity": 3,
+      "requestedCents": 107700,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-11T09:15:00Z",
+      "status": "verification_failed",
+      "channel": "API · Enterprise",
+      "description": "Request 3 conference-room cameras for operations. Total requested budget: $1,077.00. Required: 4K capture.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed. MS found a listing claim that contradicts the required specification. No purchase was recorded.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2210",
+        "status": "contradicted",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://office-supply-co.example/products/papr-2210",
+        "capturedAt": "2026-10-11T09:25:00Z",
+        "checks": [
+          {
+            "condition": "Video resolution",
+            "required": "4K capture",
+            "observed": "Fixture specification: 1080p capture only.",
+            "status": "contradicted"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $1,077.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Office Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-11T09:15:00Z",
+          "label": "Request received",
+          "detail": "Alex Morgan submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-11T09:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: NS-2026.10."
+        },
+        {
+          "at": "2026-10-11T09:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-11T09:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-11T09:25:00Z",
+          "label": "Contradiction found",
+          "detail": "Fixture specification: 1080p capture only."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2209",
+      "title": "Nitrile examination gloves",
+      "company": "Meridian Research",
+      "requester": "Taylor Brooks",
+      "department": "Research",
+      "supplier": "Lab Supply Co.",
+      "quantity": 20,
+      "requestedCents": 31800,
+      "actualCents": 31800,
+      "currency": "USD",
+      "createdAt": "2026-10-10T12:15:00Z",
+      "status": "fulfilled",
+      "channel": "API · Enterprise",
+      "description": "Request 20 nitrile examination gloves for research. Total requested budget: $318.00. Required: Powder-free nitrile.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2209",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://lab-supply-co.example/products/papr-2209",
+        "capturedAt": "2026-10-10T12:25:00Z",
+        "checks": [
+          {
+            "condition": "Material",
+            "required": "Powder-free nitrile",
+            "observed": "Fixture material: powder-free nitrile.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $318.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Lab Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-10T12:15:00Z",
+          "label": "Request received",
+          "detail": "Taylor Brooks submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-10T12:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-10T12:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-10T12:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-10T12:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture material: powder-free nitrile."
+        },
+        {
+          "at": "2026-10-11T00:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2209. Total $318.00. No real payment occurred."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2208",
+      "title": "Noise-canceling headsets",
+      "company": "Northstar Industries",
+      "requester": "Jamie Chen",
+      "department": "Workplace",
+      "supplier": "Office Supply Co.",
+      "quantity": 5,
+      "requestedCents": 64500,
+      "actualCents": 64500,
+      "currency": "USD",
+      "createdAt": "2026-10-09T15:15:00Z",
+      "status": "fulfilled",
+      "channel": "MCP · Personal agent",
+      "description": "Request 5 noise-canceling headsets for workplace. Total requested budget: $645.00. Required: USB-C.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 150000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2208",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://office-supply-co.example/products/papr-2208",
+        "capturedAt": "2026-10-09T15:25:00Z",
+        "checks": [
+          {
+            "condition": "Connector",
+            "required": "USB-C",
+            "observed": "Fixture connector: USB-C.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $1,500.00",
+            "observed": "Fixture total: $645.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Office Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-09T15:15:00Z",
+          "label": "Request received",
+          "detail": "Jamie Chen submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-09T15:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: NS-2026.10."
+        },
+        {
+          "at": "2026-10-09T15:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-09T15:23:00Z",
+          "label": "Agent listing received",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-09T15:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture connector: USB-C."
+        },
+        {
+          "at": "2026-10-10T03:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2208. Total $645.00. No real payment occurred."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2207",
+      "title": "Disposable transfer pipettes",
+      "company": "Meridian Research",
+      "requester": "Sam Rivera",
+      "department": "Lab operations",
+      "supplier": "Lab Supply Co.",
+      "quantity": 12,
+      "requestedCents": 28800,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-08T18:15:00Z",
+      "status": "verified",
+      "channel": "API · Enterprise",
+      "description": "Request 12 disposable transfer pipettes for lab operations. Total requested budget: $288.00. Required: 3 mL.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. Procurement has not placed an order. This is not payment authorization.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2207",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://lab-supply-co.example/products/papr-2207",
+        "capturedAt": "2026-10-08T18:25:00Z",
+        "checks": [
+          {
+            "condition": "Volume",
+            "required": "3 mL",
+            "observed": "Fixture capacity: 3 mL.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $288.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Lab Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-08T18:15:00Z",
+          "label": "Request received",
+          "detail": "Sam Rivera submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-08T18:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-08T18:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-08T18:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-08T18:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture capacity: 3 mL."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2206",
+      "title": "Office snack subscription",
+      "company": "Northstar Industries",
+      "requester": "Jamie Chen",
+      "department": "Workplace",
+      "supplier": null,
+      "quantity": 1,
+      "requestedCents": 42000,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-07T21:15:00Z",
+      "status": "denied",
+      "channel": "MCP · Personal agent",
+      "description": "Request 1 office snack subscription for workplace. Total requested budget: $420.00. Evaluate against the assigned purchasing policy.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 150000
+      },
+      "decision": "Proxy denied: recurring subscriptions are outside this employee’s purchasing policy. MS recorded the denial. No search, verification, or purchase was started.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2206",
+        "status": "not_run",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": null,
+        "capturedAt": null,
+        "checks": [],
+        "note": "No proof was initiated because authorization was denied."
+      },
+      "events": [
+        {
+          "at": "2026-10-07T21:15:00Z",
+          "label": "Request received",
+          "detail": "Jamie Chen submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-07T21:16:00Z",
+          "label": "Authorization denied",
+          "detail": "Proxy denied: recurring subscriptions are outside this employee’s purchasing policy. MS recorded the denial. No search, verification, or purchase was started."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2205",
+      "title": "Portable SSD drives",
+      "company": "Meridian Research",
+      "requester": "Taylor Brooks",
+      "department": "Research",
+      "supplier": "Data Supply Co.",
+      "quantity": 6,
+      "requestedCents": 71400,
+      "actualCents": 71400,
+      "currency": "USD",
+      "createdAt": "2026-10-07T00:15:00Z",
+      "status": "fulfilled",
+      "channel": "MCP · Personal agent",
+      "description": "Request 6 portable ssd drives for research. Total requested budget: $714.00. Required: At least 2 TB.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2205",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://data-supply-co.example/products/papr-2205",
+        "capturedAt": "2026-10-07T00:25:00Z",
+        "checks": [
+          {
+            "condition": "Storage capacity",
+            "required": "At least 2 TB",
+            "observed": "Fixture capacity: 2 TB.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $714.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Data Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-07T00:15:00Z",
+          "label": "Request received",
+          "detail": "Taylor Brooks submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-07T00:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-07T00:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-07T00:23:00Z",
+          "label": "Agent listing received",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-07T00:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture capacity: 2 TB."
+        },
+        {
+          "at": "2026-10-07T12:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2205. Total $714.00. No real payment occurred."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2204",
+      "title": "Standing desk converters",
+      "company": "Northstar Industries",
+      "requester": "Alex Morgan",
+      "department": "Operations",
+      "supplier": "Workplace Direct",
+      "quantity": 4,
+      "requestedCents": 99600,
+      "actualCents": 99600,
+      "currency": "USD",
+      "createdAt": "2026-10-06T03:15:00Z",
+      "status": "fulfilled",
+      "channel": "API · Enterprise",
+      "description": "Request 4 standing desk converters for operations. Total requested budget: $996.00. Required: At least 80 cm.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2204",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://workplace-direct.example/products/papr-2204",
+        "capturedAt": "2026-10-06T03:25:00Z",
+        "checks": [
+          {
+            "condition": "Desk width",
+            "required": "At least 80 cm",
+            "observed": "Fixture width: 90 cm.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $996.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Workplace Direct is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-06T03:15:00Z",
+          "label": "Request received",
+          "detail": "Alex Morgan submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-06T03:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: NS-2026.10."
+        },
+        {
+          "at": "2026-10-06T03:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-06T03:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-06T03:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture width: 90 cm."
+        },
+        {
+          "at": "2026-10-06T15:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2204. Total $996.00. No real payment occurred."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2203",
+      "title": "Temperature data loggers",
+      "company": "Meridian Research",
+      "requester": "Sam Rivera",
+      "department": "Lab operations",
+      "supplier": "Lab Supply Co.",
+      "quantity": 5,
+      "requestedCents": 89500,
+      "actualCents": null,
+      "currency": "USD",
+      "createdAt": "2026-10-05T06:15:00Z",
+      "status": "verification_failed",
+      "channel": "MCP · Personal agent",
+      "description": "Request 5 temperature data loggers for lab operations. Total requested budget: $895.00. Required: Down to −80 °C.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed. MS found a listing claim that contradicts the required specification. No purchase was recorded.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2203",
+        "status": "contradicted",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://lab-supply-co.example/products/papr-2203",
+        "capturedAt": "2026-10-05T06:25:00Z",
+        "checks": [
+          {
+            "condition": "Temperature range",
+            "required": "Down to −80 °C",
+            "observed": "Fixture minimum temperature: −30 °C.",
+            "status": "contradicted"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $895.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Lab Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-05T06:15:00Z",
+          "label": "Request received",
+          "detail": "Sam Rivera submitted through MCP · Personal agent."
+        },
+        {
+          "at": "2026-10-05T06:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-05T06:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-05T06:23:00Z",
+          "label": "Agent listing received",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-05T06:25:00Z",
+          "label": "Contradiction found",
+          "detail": "Fixture minimum temperature: −30 °C."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2202",
+      "title": "Shipping label printer",
+      "company": "Northstar Industries",
+      "requester": "Alex Morgan",
+      "department": "Operations",
+      "supplier": "Office Supply Co.",
+      "quantity": 1,
+      "requestedCents": 24900,
+      "actualCents": 24900,
+      "currency": "USD",
+      "createdAt": "2026-10-04T09:15:00Z",
+      "status": "fulfilled",
+      "channel": "API · Enterprise",
+      "description": "Request 1 shipping label printer for operations. Total requested budget: $249.00. Required: Direct thermal.",
+      "policy": {
+        "version": "NS-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2202",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://office-supply-co.example/products/papr-2202",
+        "capturedAt": "2026-10-04T09:25:00Z",
+        "checks": [
+          {
+            "condition": "Print method",
+            "required": "Direct thermal",
+            "observed": "Fixture method: direct thermal.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $249.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Office Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-04T09:15:00Z",
+          "label": "Request received",
+          "detail": "Alex Morgan submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-04T09:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: NS-2026.10."
+        },
+        {
+          "at": "2026-10-04T09:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-04T09:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-04T09:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture method: direct thermal."
+        },
+        {
+          "at": "2026-10-04T21:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2202. Total $249.00. No real payment occurred."
+        }
+      ]
+    },
+    {
+      "id": "PAPR-2201",
+      "title": "Laboratory storage bins",
+      "company": "Meridian Research",
+      "requester": "Sam Rivera",
+      "department": "Lab operations",
+      "supplier": "Lab Supply Co.",
+      "quantity": 16,
+      "requestedCents": 38400,
+      "actualCents": 38400,
+      "currency": "USD",
+      "createdAt": "2026-10-03T12:15:00Z",
+      "status": "fulfilled",
+      "channel": "API · Enterprise",
+      "description": "Request 16 laboratory storage bins for lab operations. Total requested budget: $384.00. Required: Polypropylene.",
+      "policy": {
+        "version": "MR-2026.10",
+        "ceilingCents": 500000
+      },
+      "decision": "Authorization passed and the simulated listing checks are supported. A separate fictional procurement event records fulfillment.",
+      "proof": {
+        "id": "DEMO-EVIDENCE-2201",
+        "status": "supported",
+        "kind": "simulated_listing_checks",
+        "formalProof": false,
+        "source": "https://lab-supply-co.example/products/papr-2201",
+        "capturedAt": "2026-10-03T12:25:00Z",
+        "checks": [
+          {
+            "condition": "Material",
+            "required": "Polypropylene",
+            "observed": "Fixture material: polypropylene.",
+            "status": "supported"
+          },
+          {
+            "condition": "Total within policy ceiling",
+            "required": "Total ≤ $5,000.00",
+            "observed": "Fixture total: $384.00, including fixture tax and shipping.",
+            "status": "supported"
+          },
+          {
+            "condition": "Supplier and currency",
+            "required": "Approved supplier; USD",
+            "observed": "Lab Supply Co. is on the fictional approved list; USD.",
+            "status": "supported"
+          }
+        ],
+        "note": "Illustrative fixture evidence only; source content was not fetched."
+      },
+      "events": [
+        {
+          "at": "2026-10-03T12:15:00Z",
+          "label": "Request received",
+          "detail": "Sam Rivera submitted through API · Enterprise."
+        },
+        {
+          "at": "2026-10-03T12:16:00Z",
+          "label": "Authorization accepted",
+          "detail": "User and company policy loaded. Snapshot: MR-2026.10."
+        },
+        {
+          "at": "2026-10-03T12:17:00Z",
+          "label": "Requirements prepared",
+          "detail": "Compiled conditions attached to the fictional request record."
+        },
+        {
+          "at": "2026-10-03T12:23:00Z",
+          "label": "Managed search listing selected",
+          "detail": "Source URL and claimed specifications saved in this fixture."
+        },
+        {
+          "at": "2026-10-03T12:25:00Z",
+          "label": "Evidence checks supported",
+          "detail": "Fixture material: polypropylene."
+        },
+        {
+          "at": "2026-10-04T00:15:00Z",
+          "label": "Order fulfilled · simulated",
+          "detail": "Fictional procurement receipt DEMO-RCPT-2201. Total $384.00. No real payment occurred."
+        }
+      ]
+    }
+  ]
+}
